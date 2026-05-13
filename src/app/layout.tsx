@@ -1,3 +1,5 @@
+import { Header } from "@/components/layout/Header";
+import { ToastProvider } from "@/components/providers/ToastProvider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Italiana, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
@@ -54,7 +56,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${italiana.variable} ${cormorant.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-ink text-bone">
+        <Header />
         {children}
+        <ToastProvider />
       </body>
     </html>
   );
