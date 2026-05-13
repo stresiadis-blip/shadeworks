@@ -29,7 +29,7 @@ export function Marquee({
       >
         {[...items, ...items].map((item, i) => (
           <Fragment key={i}>
-            <span className="font-display text-3xl md:text-5xl text-bone-muted/70 px-8">
+            <span className="font-heading-serif text-3xl md:text-5xl text-bone-muted/70 px-8">
               {item}
             </span>
             <span className="font-mono text-xl md:text-2xl text-gold px-4 self-center">

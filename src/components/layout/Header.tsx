@@ -32,7 +32,7 @@ export function Header() {
       <div className="container mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <span className="font-display text-xl text-bone leading-none">
+          <span className="font-heading-serif text-xl text-bone leading-none">
             shade<span className="text-gold">works</span>
           </span>
         </Link>

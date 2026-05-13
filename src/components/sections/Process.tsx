@@ -45,7 +45,7 @@ const STEPS: Step[] = [
 
 export function Process() {
   return (
-    <section id="process" className="relative py-32 md:py-48 border-y border-bone/5 bg-ink-elevated/40 backdrop-blur-sm">
+    <section id="process" className="relative py-32 md:py-48 border-y border-bone/5 bg-ink/30 backdrop-blur-sm">
       <div className="container mx-auto px-6 max-w-7xl">
         <SectionHeader
           eyebrow="03 — Process"
@@ -73,7 +73,7 @@ export function Process() {
 
               <div className="relative">
                 <span
-                  className="font-display text-gold-gradient leading-none block"
+                  className="font-heading-serif text-gold-gradient leading-none block"
                   style={{ fontSize: "clamp(3.5rem, 6vw, 5.5rem)" }}
                 >
                   {step.number}
@@ -83,7 +83,7 @@ export function Process() {
                 </span>
               </div>
 
-              <h3 className="font-display text-3xl md:text-4xl text-bone leading-tight tracking-tight mt-6">
+              <h3 className="font-heading-serif text-3xl md:text-4xl text-bone leading-tight tracking-tight mt-6">
                 {step.title}
               </h3>
 

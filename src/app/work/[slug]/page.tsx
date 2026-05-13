@@ -108,7 +108,7 @@ export default async function CaseStudyPage({
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-gold mb-4">
                 Visual placeholder
               </p>
-              <p className="font-display text-3xl md:text-5xl text-bone-muted leading-tight">
+              <p className="font-heading-serif text-3xl md:text-5xl text-bone-muted leading-tight">
                 Screenshots <br />
                 <span className="text-gold-gradient italic">coming soon</span>
               </p>
@@ -138,7 +138,7 @@ export default async function CaseStudyPage({
                 Results
               </p>
               <h2
-                className="font-display text-bone leading-[0.95] tracking-tight"
+                className="font-heading-serif text-bone leading-[0.95] tracking-tight"
                 style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}
               >
                 The <span className="text-gold-gradient italic">numbers</span>.
@@ -149,7 +149,7 @@ export default async function CaseStudyPage({
                     key={r}
                     className="flex items-start gap-6 pb-6 border-b border-bone/10 last:border-b-0"
                   >
-                    <span className="font-display text-3xl md:text-4xl text-gold-gradient leading-none shrink-0">
+                    <span className="font-heading-serif text-3xl md:text-4xl text-gold-gradient leading-none shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <p className="font-serif text-bone-muted text-lg md:text-xl leading-relaxed pt-1">
@@ -170,7 +170,7 @@ export default async function CaseStudyPage({
             Next
           </p>
           <h2
-            className="font-display text-bone leading-[0.95] tracking-tight"
+            className="font-heading-serif text-bone leading-[0.95] tracking-tight"
             style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}
           >
             Have a project <br />
@@ -212,7 +212,7 @@ function ContentBlock({
         {eyebrow}
       </p>
       <h2
-        className="font-display text-bone leading-[0.95] tracking-tight"
+        className="font-heading-serif text-bone leading-[0.95] tracking-tight"
         style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}
       >
         {title}

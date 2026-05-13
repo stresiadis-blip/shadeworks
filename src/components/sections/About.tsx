@@ -11,7 +11,7 @@ const STATS: Stat[] = [
 
 export function About() {
   return (
-    <section id="about" className="relative py-32 md:py-48 overflow-hidden">
+    <section id="about" className="relative py-32 md:py-48 overflow-hidden bg-ink/30 backdrop-blur-sm">
       <div className="container relative mx-auto px-6 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start">
           {/* Left — heading */}
@@ -20,7 +20,7 @@ export function About() {
               04 — About
             </p>
             <h2
-              className="font-display text-bone leading-[0.95] tracking-tight"
+              className="font-heading-serif text-bone leading-[0.95] tracking-tight"
               style={{ fontSize: "clamp(2.5rem, 6vw, 5.5rem)" }}
             >
               A studio of one.
@@ -69,7 +69,7 @@ export function About() {
                     className="flex items-baseline justify-between gap-6 border-b border-bone/5 pb-6 last:border-b-0 last:pb-0"
                   >
                     <span
-                      className="font-display text-gold-gradient leading-none"
+                      className="font-heading-serif text-gold-gradient leading-none"
                       style={{ fontSize: "clamp(2.5rem, 4vw, 3.5rem)" }}
                     >
                       {stat.value}
@@ -86,7 +86,7 @@ export function About() {
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-bone-dim">
                 Based in
               </p>
-              <p className="font-display text-3xl md:text-4xl text-bone mt-2">
+              <p className="font-heading-serif text-3xl md:text-4xl text-bone mt-2">
                 Constanta, Romania
               </p>
               <p className="font-serif-italic text-bone-muted mt-2">

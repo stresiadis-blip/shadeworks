@@ -13,14 +13,14 @@ const QUICK_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="relative bg-ink/70 backdrop-blur-md border-t border-bone/10 pt-24 pb-12">
+    <footer className="relative bg-ink/30 backdrop-blur-sm border-t border-bone/10 pt-24 pb-12">
       <div className="container mx-auto px-6 max-w-7xl">
         {/* Top — brand + nav */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 pb-16">
           {/* Brand */}
           <div className="md:col-span-6">
             <Link href="/" className="inline-block group">
-              <span className="font-display text-4xl md:text-5xl text-bone leading-none block">
+              <span className="font-heading-serif text-4xl md:text-5xl text-bone leading-none block">
                 shade<span className="text-gold">works</span>
               </span>
             </Link>
@@ -101,7 +101,7 @@ export function Footer() {
         <div className="border-t border-bone/10 pt-16 pb-12">
           <p
             aria-hidden="true"
-            className="font-display text-bone/[0.08] leading-none tracking-tighter select-none text-center"
+            className="font-heading-serif text-bone/[0.08] leading-none tracking-tighter select-none text-center"
             style={{ fontSize: "clamp(4rem, 18vw, 18rem)" }}
           >
             shadeworks

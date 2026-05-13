@@ -277,18 +277,28 @@
     -webkit-text-fill-color: transparent;
   }
 
-  /* Display font shortcut */
+  /* Italiana — reserved for the hero brand line only.
+     Thin Roman serifs break at mid-range pixel sizes on Chrome desktop
+     (capital F/B/W lose strokes). Italiana stays where it shines: the
+     huge "Where code casts long" headline. */
   .font-display {
     font-family: var(--font-italiana), Georgia, serif;
     letter-spacing: 0.01em;
   }
+
   .font-serif-italic {
     font-family: var(--font-cormorant), Georgia, serif;
     font-style: italic;
   }
-  /* Project/case-study titles — Italiana's thin F glyph reads as |- at
-     mid-large sizes. Use Cormorant 500 for project names where letterforms
-     need to be unambiguous. Italiana stays on the hero where size is huge. */
+
+  /* All section headings, card titles, FAQ questions, footer wordmark. */
+  .font-heading-serif {
+    font-family: var(--font-cormorant), Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+
+  /* Project/case-study names — tighter tracking, kerning enabled. */
   .font-project {
     font-family: var(--font-cormorant), Georgia, serif;
     font-weight: 500;

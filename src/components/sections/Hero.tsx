@@ -3,7 +3,7 @@ import { ArrowDown } from "lucide-react";
 
 export function Hero() {
   return (
-    <section className="relative isolate min-h-screen flex items-center pt-32 pb-24 md:pt-40 md:pb-32">
+    <section className="relative isolate min-h-screen flex items-center pt-32 pb-24 md:pt-40 md:pb-32 bg-ink/30 backdrop-blur-sm">
 
       <div className="container relative mx-auto px-6 max-w-7xl">
         {/* Eyebrow */}

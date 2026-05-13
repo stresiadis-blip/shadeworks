@@ -59,7 +59,7 @@ export function Contact() {
   }
 
   return (
-    <section id="contact" className="relative py-32 md:py-48 border-t border-bone/5 bg-ink-elevated/40 backdrop-blur-sm">
+    <section id="contact" className="relative py-32 md:py-48 border-t border-bone/5 bg-ink/30 backdrop-blur-sm">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
           {/* Left — copy */}
@@ -68,7 +68,7 @@ export function Contact() {
               06 — Contact
             </p>
             <h2
-              className="font-display text-bone leading-[0.95] tracking-tight"
+              className="font-heading-serif text-bone leading-[0.95] tracking-tight"
               style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)" }}
             >
               Start a <span className="text-gold-gradient italic">project</span>.

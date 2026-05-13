@@ -22,7 +22,7 @@ export function SectionHeader({
         {eyebrow}
       </p>
       <h2
-        className="font-display text-bone leading-[0.95] tracking-tight"
+        className="font-heading-serif text-bone leading-[0.95] tracking-tight"
         style={{ fontSize: "clamp(2.25rem, 5vw, 4.5rem)" }}
       >
         {title}

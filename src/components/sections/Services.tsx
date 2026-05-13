@@ -46,7 +46,7 @@ const SERVICES: Service[] = [
 
 export function Services() {
   return (
-    <section id="services" className="relative py-32 md:py-48">
+    <section id="services" className="relative py-32 md:py-48 bg-ink/30 backdrop-blur-sm">
 
       <div className="container relative mx-auto px-6 max-w-7xl">
         <SectionHeader
@@ -69,7 +69,7 @@ export function Services() {
                 className="group glass-card rounded-lg p-10 md:p-12 flex flex-col min-h-[320px]"
               >
                 <div className="flex items-start justify-between mb-10">
-                  <span className="font-display text-5xl md:text-6xl text-gold-gradient leading-none">
+                  <span className="font-heading-serif text-5xl md:text-6xl text-gold-gradient leading-none">
                     {service.number}
                   </span>
                   <div className="h-12 w-12 rounded-full border border-gold/30 flex items-center justify-center bg-gold/5 group-hover:bg-gold/10 group-hover:border-gold/60 transition-all">
@@ -77,7 +77,7 @@ export function Services() {
                   </div>
                 </div>
 
-                <h3 className="font-display text-3xl md:text-4xl text-bone leading-tight tracking-tight">
+                <h3 className="font-heading-serif text-3xl md:text-4xl text-bone leading-tight tracking-tight">
                   {service.title}
                 </h3>
                 <p className="font-serif-italic text-bone-muted text-lg mt-4 leading-relaxed">

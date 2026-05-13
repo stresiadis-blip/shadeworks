@@ -8,7 +8,7 @@ export function Work() {
   const ferdi = CASE_STUDIES[0];
 
   return (
-    <section id="work" className="relative py-32 md:py-48">
+    <section id="work" className="relative py-32 md:py-48 bg-ink/30 backdrop-blur-sm">
       <div className="container mx-auto px-6 max-w-7xl">
         <SectionHeader
           eyebrow="01 — Selected work"
@@ -76,7 +76,7 @@ export function Work() {
 
             <div className="mt-12">
               <h3
-                className="font-display text-bone-muted leading-[1] tracking-tight"
+                className="font-heading-serif text-bone-muted leading-[1] tracking-tight"
                 style={{ fontSize: "clamp(2rem, 3vw, 3rem)" }}
               >
                 Concept <br /> work
@@ -98,7 +98,7 @@ export function Work() {
                 Q3 2026
               </span>
               <h3
-                className="font-display text-bone leading-[1] tracking-tight mt-3"
+                className="font-heading-serif text-bone leading-[1] tracking-tight mt-3"
                 style={{ fontSize: "clamp(1.75rem, 3vw, 2.5rem)" }}
               >
                 More coming soon.
