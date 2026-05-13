@@ -55,7 +55,7 @@ export default async function CaseStudyPage({
           </p>
 
           <h1
-            className="font-display text-bone leading-[0.92] tracking-tight"
+            className="font-project text-bone leading-[0.92]"
             style={{ fontSize: "clamp(3rem, 9vw, 8rem)" }}
           >
             {study.name}

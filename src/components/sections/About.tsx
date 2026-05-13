@@ -11,19 +11,7 @@ const STATS: Stat[] = [
 
 export function About() {
   return (
-    <section id="about" className="relative bg-ink py-32 md:py-48 overflow-hidden">
-      {/* Decorative arc background */}
-      <svg
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-40 -bottom-40 w-[800px] opacity-[0.06]"
-        viewBox="0 0 800 800"
-        fill="none"
-      >
-        <circle cx="400" cy="400" r="380" stroke="#c9a961" strokeWidth="1" />
-        <circle cx="400" cy="400" r="280" stroke="#c9a961" strokeWidth="1" />
-        <circle cx="400" cy="400" r="180" stroke="#c9a961" strokeWidth="1" />
-      </svg>
-
+    <section id="about" className="relative py-32 md:py-48 overflow-hidden">
       <div className="container relative mx-auto px-6 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start">
           {/* Left — heading */}

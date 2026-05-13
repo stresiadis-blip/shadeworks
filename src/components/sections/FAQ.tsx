@@ -31,7 +31,7 @@ const FAQS: Faq[] = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="relative bg-ink py-32 md:py-48">
+    <section id="faq" className="relative py-32 md:py-48">
       <div className="container mx-auto px-6 max-w-7xl">
         <SectionHeader
           eyebrow="05 — Frequently asked"

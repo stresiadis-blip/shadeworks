@@ -46,12 +46,7 @@ const SERVICES: Service[] = [
 
 export function Services() {
   return (
-    <section id="services" className="relative bg-ink py-32 md:py-48">
-      {/* Subtle halftone backdrop */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-halftone opacity-[0.04]"
-      />
+    <section id="services" className="relative py-32 md:py-48">
 
       <div className="container relative mx-auto px-6 max-w-7xl">
         <SectionHeader

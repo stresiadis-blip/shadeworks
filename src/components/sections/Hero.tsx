@@ -3,31 +3,7 @@ import { ArrowDown } from "lucide-react";
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden bg-ink min-h-screen flex items-center pt-32 pb-24 md:pt-40 md:pb-32">
-      {/* Decorative shadow arc */}
-      <svg
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-32 top-1/2 -translate-y-1/2 w-[120%] max-w-[1200px] opacity-[0.07]"
-        viewBox="0 0 800 800"
-        fill="none"
-      >
-        <defs>
-          <radialGradient id="shadeArc" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#c9a961" stopOpacity="0.9" />
-            <stop offset="60%" stopColor="#c9a961" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#c9a961" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <circle cx="400" cy="400" r="380" stroke="url(#shadeArc)" strokeWidth="1" />
-        <circle cx="400" cy="400" r="300" stroke="url(#shadeArc)" strokeWidth="1" />
-        <circle cx="400" cy="400" r="220" stroke="url(#shadeArc)" strokeWidth="1" />
-      </svg>
-
-      {/* Halftone dust */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-halftone opacity-[0.05]"
-      />
+    <section className="relative isolate min-h-screen flex items-center pt-32 pb-24 md:pt-40 md:pb-32">
 
       <div className="container relative mx-auto px-6 max-w-7xl">
         {/* Eyebrow */}

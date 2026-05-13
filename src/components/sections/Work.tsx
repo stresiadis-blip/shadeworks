@@ -8,7 +8,7 @@ export function Work() {
   const ferdi = CASE_STUDIES[0];
 
   return (
-    <section id="work" className="relative bg-ink py-32 md:py-48">
+    <section id="work" className="relative py-32 md:py-48">
       <div className="container mx-auto px-6 max-w-7xl">
         <SectionHeader
           eyebrow="01 — Selected work"
@@ -45,7 +45,7 @@ export function Work() {
                 {ferdi.role}
               </p>
               <h3
-                className="font-display text-bone leading-[1] tracking-tight"
+                className="font-project text-bone leading-[1]"
                 style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)" }}
               >
                 {ferdi.name}

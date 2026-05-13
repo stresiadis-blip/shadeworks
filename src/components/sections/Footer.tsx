@@ -13,7 +13,7 @@ const QUICK_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="relative bg-ink border-t border-bone/10 pt-24 pb-12">
+    <footer className="relative bg-ink/70 backdrop-blur-md border-t border-bone/10 pt-24 pb-12">
       <div className="container mx-auto px-6 max-w-7xl">
         {/* Top — brand + nav */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 pb-16">

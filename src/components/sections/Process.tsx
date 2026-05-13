@@ -45,7 +45,7 @@ const STEPS: Step[] = [
 
 export function Process() {
   return (
-    <section id="process" className="relative bg-ink-elevated py-32 md:py-48 border-y border-bone/5">
+    <section id="process" className="relative py-32 md:py-48 border-y border-bone/5 bg-ink-elevated/40 backdrop-blur-sm">
       <div className="container mx-auto px-6 max-w-7xl">
         <SectionHeader
           eyebrow="03 — Process"

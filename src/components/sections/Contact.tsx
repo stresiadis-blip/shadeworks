@@ -59,7 +59,7 @@ export function Contact() {
   }
 
   return (
-    <section id="contact" className="relative bg-ink-elevated py-32 md:py-48 border-t border-bone/5">
+    <section id="contact" className="relative py-32 md:py-48 border-t border-bone/5 bg-ink-elevated/40 backdrop-blur-sm">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
           {/* Left — copy */}

@@ -286,4 +286,38 @@
     font-family: var(--font-cormorant), Georgia, serif;
     font-style: italic;
   }
+  /* Project/case-study titles — Italiana's thin F glyph reads as |- at
+     mid-large sizes. Use Cormorant 500 for project names where letterforms
+     need to be unambiguous. Italiana stays on the hero where size is huge. */
+  .font-project {
+    font-family: var(--font-cormorant), Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    font-feature-settings: "ss01", "kern";
+  }
+
+  /* Scroll-driven parallax for the ambient shadow-arc background.
+     Progressive enhancement: only Chrome 115+/Safari 17.4+. Respects reduced motion. */
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .shadow-arc-parallax {
+        animation: shadow-arc-drift linear both;
+        animation-timeline: scroll(root);
+      }
+      .shadow-arc-parallax-slow {
+        animation: shadow-arc-drift-slow linear both;
+        animation-timeline: scroll(root);
+      }
+    }
+  }
+  @keyframes shadow-arc-drift {
+    to {
+      transform: translateY(-5vh);
+    }
+  }
+  @keyframes shadow-arc-drift-slow {
+    to {
+      transform: translateY(-2.5vh);
+    }
+  }
 }
