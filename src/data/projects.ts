@@ -1,0 +1,246 @@
+export type ProjectCategory = "custom-code" | "control-panels" | "megaphone";
+
+export type ProjectStatus = "LIVE" | "CONCEPT" | "IN PROGRESS";
+
+export type Project = {
+  id: string;
+  slug: string;
+  title: string;
+  year: string;
+  category: ProjectCategory;
+  status: ProjectStatus;
+  description: string;
+  tags: string[];
+};
+
+export const CATEGORY_LABELS: Record<ProjectCategory, string> = {
+  "custom-code": "01 // CUSTOM CODE & SOFTWARE",
+  "control-panels": "02 // BUSINESS CONTROL PANELS",
+  megaphone: "03 // THE MEGAPHONE",
+};
+
+export const CATEGORY_SHORT: Record<ProjectCategory, string> = {
+  "custom-code": "CUSTOM CODE",
+  "control-panels": "CONTROL PANELS",
+  megaphone: "MEGAPHONE",
+};
+
+export const PROJECTS: Project[] = [
+  {
+    id: "p01",
+    slug: "ferdipoker",
+    title: "FerdiPoker",
+    year: "2026",
+    category: "custom-code",
+    status: "LIVE",
+    description:
+      "MTT poker training platform — Stripe subscriptions, member video library, Discord-linked community",
+    tags: ["Next.js", "Supabase", "Stripe"],
+  },
+  {
+    id: "p02",
+    slug: "ledger-console",
+    title: "Ledger Console",
+    year: "2026",
+    category: "control-panels",
+    status: "CONCEPT",
+    description: "Unified finance ledger with reconciliation automations and anomaly flags",
+    tags: ["Next.js", "Postgres", "Cron"],
+  },
+  {
+    id: "p03",
+    slug: "fleet-ops-panel",
+    title: "Fleet Ops Panel",
+    year: "2026",
+    category: "control-panels",
+    status: "CONCEPT",
+    description: "Live vehicle telemetry, dispatch board, and maintenance scheduling in one panel",
+    tags: ["Realtime", "Maps", "Supabase"],
+  },
+  {
+    id: "p04",
+    slug: "signal-pipeline",
+    title: "Signal Pipeline",
+    year: "2026",
+    category: "megaphone",
+    status: "CONCEPT",
+    description: "Content distribution engine — one source, twelve channels, zero manual posting",
+    tags: ["Automation", "APIs", "Queues"],
+  },
+  {
+    id: "p05",
+    slug: "shade-engine",
+    title: "Shade Engine",
+    year: "2026",
+    category: "custom-code",
+    status: "IN PROGRESS",
+    description: "Coordinated AI agent swarm — architect, build, test, deploy in parallel",
+    tags: ["Agents", "Orchestration", "CI"],
+  },
+  {
+    id: "p06",
+    slug: "vault-api",
+    title: "Vault API",
+    year: "2026",
+    category: "custom-code",
+    status: "CONCEPT",
+    description: "Proprietary document vault with field-level encryption and audit trails",
+    tags: ["API", "Encryption", "Audit"],
+  },
+  {
+    id: "p07",
+    slug: "ops-mirror",
+    title: "Ops Mirror",
+    year: "2026",
+    category: "control-panels",
+    status: "CONCEPT",
+    description: "Company-wide KPI mirror — every metric, one screen, refreshed every minute",
+    tags: ["Dashboards", "ETL", "Charts"],
+  },
+  {
+    id: "p08",
+    slug: "echo-grid",
+    title: "Echo Grid",
+    year: "2026",
+    category: "megaphone",
+    status: "CONCEPT",
+    description: "Programmatic SEO grid — thousands of indexed pages from one data source",
+    tags: ["SEO", "pSEO", "Next.js"],
+  },
+  {
+    id: "p09",
+    slug: "night-broker",
+    title: "Night Broker",
+    year: "2026",
+    category: "custom-code",
+    status: "CONCEPT",
+    description: "After-hours order routing system with retry logic and human escalation",
+    tags: ["Queues", "Webhooks", "Ops"],
+  },
+  {
+    id: "p10",
+    slug: "pulse-board",
+    title: "Pulse Board",
+    year: "2026",
+    category: "control-panels",
+    status: "CONCEPT",
+    description: "Sales pipeline pulse — lead scoring, stage velocity, forecast bands",
+    tags: ["CRM", "Scoring", "Charts"],
+  },
+  {
+    id: "p11",
+    slug: "drip-forge",
+    title: "Drip Forge",
+    year: "2026",
+    category: "megaphone",
+    status: "CONCEPT",
+    description: "Lifecycle email forge — branching sequences compiled from plain-text specs",
+    tags: ["Email", "Automation", "Resend"],
+  },
+  {
+    id: "p12",
+    slug: "stockroom-os",
+    title: "Stockroom OS",
+    year: "2026",
+    category: "control-panels",
+    status: "CONCEPT",
+    description: "Inventory control with barcode intake, reorder triggers, and supplier sync",
+    tags: ["Inventory", "Scanning", "Sync"],
+  },
+  {
+    id: "p13",
+    slug: "courier-mesh",
+    title: "Courier Mesh",
+    year: "2026",
+    category: "custom-code",
+    status: "CONCEPT",
+    description: "Last-mile courier mesh — route optimization and proof-of-delivery capture",
+    tags: ["Routing", "Mobile", "GPS"],
+  },
+  {
+    id: "p14",
+    slug: "rank-sentinel",
+    title: "Rank Sentinel",
+    year: "2026",
+    category: "megaphone",
+    status: "CONCEPT",
+    description: "Search rank sentinel — daily SERP tracking with AI-visibility scoring",
+    tags: ["SEO", "Tracking", "AI"],
+  },
+  {
+    id: "p15",
+    slug: "intake-gate",
+    title: "Intake Gate",
+    year: "2026",
+    category: "custom-code",
+    status: "CONCEPT",
+    description: "Client intake gateway — KYC checks, e-sign, and automated onboarding",
+    tags: ["Forms", "KYC", "Workflow"],
+  },
+  {
+    id: "p16",
+    slug: "margin-scope",
+    title: "Margin Scope",
+    year: "2026",
+    category: "control-panels",
+    status: "CONCEPT",
+    description: "Per-SKU margin scope — landed cost, fees, and true profit per unit",
+    tags: ["Finance", "ETL", "Reports"],
+  },
+  {
+    id: "p17",
+    slug: "broadcast-relay",
+    title: "Broadcast Relay",
+    year: "2026",
+    category: "megaphone",
+    status: "CONCEPT",
+    description: "Short-form video relay — auto-captioning, resizing, multi-platform push",
+    tags: ["Video", "FFmpeg", "APIs"],
+  },
+  {
+    id: "p18",
+    slug: "tally-room",
+    title: "Tally Room",
+    year: "2026",
+    category: "control-panels",
+    status: "CONCEPT",
+    description: "Field-team tally room — shift reports, geo check-ins, payroll exports",
+    tags: ["Mobile", "Geo", "Payroll"],
+  },
+  {
+    id: "p19",
+    slug: "cipher-desk",
+    title: "Cipher Desk",
+    year: "2026",
+    category: "custom-code",
+    status: "CONCEPT",
+    description: "Internal secrets desk — scoped credentials, rotation alerts, access logs",
+    tags: ["Security", "Vault", "Logs"],
+  },
+  {
+    id: "p20",
+    slug: "funnel-x-ray",
+    title: "Funnel X-Ray",
+    year: "2026",
+    category: "megaphone",
+    status: "CONCEPT",
+    description: "Acquisition funnel x-ray — attribution stitched across ads, email, organic",
+    tags: ["Analytics", "Attribution", "GA4"],
+  },
+  {
+    id: "p21",
+    slug: "dock-master",
+    title: "Dock Master",
+    year: "2026",
+    category: "custom-code",
+    status: "CONCEPT",
+    description: "Marina dock management — berth booking, billing cycles, harbor comms",
+    tags: ["Booking", "Stripe", "Realtime"],
+  },
+];
+
+export const STATUS_COLOR: Record<ProjectStatus, string> = {
+  LIVE: "#C9A961",
+  CONCEPT: "#8a8275",
+  "IN PROGRESS": "#b8b1a3",
+};
