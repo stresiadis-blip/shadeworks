@@ -24,12 +24,13 @@
   --color-gold-light: #e6c77e;
   --color-gold-dark: #a88838;
 
+  --color-crimson: #e5253d;
+
   /* Fonts (loaded in layout.tsx via next/font/google) */
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-display: var(--font-italiana), Georgia, serif;
-  --font-serif: var(--font-cormorant), Georgia, serif;
-  --font-heading: var(--font-italiana), Georgia, serif;
+  --font-display: var(--font-archivo), Impact, sans-serif;
+  --font-heading: var(--font-archivo), Impact, sans-serif;
 
   /* shadcn passthroughs (kept so Card/Button/etc keep working) */
   --color-background: var(--background);
@@ -277,57 +278,26 @@
     -webkit-text-fill-color: transparent;
   }
 
-  /* Italiana — reserved for the hero brand line only.
-     Thin Roman serifs break at mid-range pixel sizes on Chrome desktop
-     (capital F/B/W lose strokes). Italiana stays where it shines: the
-     huge "Where code casts long" headline. */
-  .font-display {
+  /* Italiana — reserved EXCLUSIVELY for the logo wordmark. */
+  .font-logo {
     font-family: var(--font-italiana), Georgia, serif;
     letter-spacing: 0.01em;
   }
 
-  .font-serif-italic {
-    font-family: var(--font-cormorant), Georgia, serif;
-    font-style: italic;
+  /* Noir poster display — Archivo Black, uppercase, tight leading. */
+  .font-display-black {
+    font-family: var(--font-archivo), Impact, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.95;
   }
 
-  /* All section headings, card titles, FAQ questions, footer wordmark. */
-  .font-heading-serif {
-    font-family: var(--font-cormorant), Georgia, serif;
-    font-weight: 500;
-    letter-spacing: -0.015em;
+  /* Terminal caret — crimson blink */
+  @keyframes caret-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
   }
-
-  /* Project/case-study names — tighter tracking, kerning enabled. */
-  .font-project {
-    font-family: var(--font-cormorant), Georgia, serif;
-    font-weight: 500;
-    letter-spacing: -0.025em;
-    font-feature-settings: "ss01", "kern";
-  }
-
-  /* Scroll-driven parallax for the ambient shadow-arc background.
-     Progressive enhancement: only Chrome 115+/Safari 17.4+. Respects reduced motion. */
-  @supports (animation-timeline: scroll()) {
-    @media (prefers-reduced-motion: no-preference) {
-      .shadow-arc-parallax {
-        animation: shadow-arc-drift linear both;
-        animation-timeline: scroll(root);
-      }
-      .shadow-arc-parallax-slow {
-        animation: shadow-arc-drift-slow linear both;
-        animation-timeline: scroll(root);
-      }
-    }
-  }
-  @keyframes shadow-arc-drift {
-    to {
-      transform: translateY(-5vh);
-    }
-  }
-  @keyframes shadow-arc-drift-slow {
-    to {
-      transform: translateY(-2.5vh);
-    }
+  .animate-caret {
+    animation: caret-blink 1s steps(1) infinite;
   }
 }

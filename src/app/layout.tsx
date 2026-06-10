@@ -1,8 +1,5 @@
-import { Header } from "@/components/layout/Header";
-import { ToastProvider } from "@/components/providers/ToastProvider";
-import { ShadowArcBackground } from "@/components/ShadowArcBackground";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Italiana, Cormorant_Garamond } from "next/font/google";
+import { Geist, Geist_Mono, Italiana, Archivo_Black } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,23 +21,22 @@ const italiana = Italiana({
   display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
+const archivo = Archivo_Black({
+  variable: "--font-archivo",
   subsets: ["latin"],
-  weight: ["400", "500"],
-  style: ["normal", "italic"],
+  weight: "400",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Shade Works — Software Studio",
+  title: "Shade Works — You Think It. We Shade It Into Reality.",
   description:
-    "Premium software studio in Constanta. Full-stack web apps, e-commerce, dashboards, and landing pages.",
+    "Custom software. App architecture. Business control panels. Digital marketing pipelines. All built from nothing. No templates. No shortcuts. Just raw execution at machine speed.",
   metadataBase: new URL("https://shadeworks.dev"),
   openGraph: {
-    title: "Shade Works — Software Studio",
+    title: "Shade Works",
     description:
-      "Premium software studio in Constanta. Full-stack web apps, e-commerce, dashboards, and landing pages.",
+      "Custom software, business control panels, and marketing pipelines — built from nothing at machine speed.",
     type: "website",
     locale: "en_US",
   },
@@ -54,14 +50,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${italiana.variable} ${cormorant.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${italiana.variable} ${archivo.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-ink text-bone">
-        <ShadowArcBackground />
-        <Header />
-        {children}
-        <ToastProvider />
-      </body>
+      <body className="min-h-full bg-ink text-bone">{children}</body>
     </html>
   );
 }
