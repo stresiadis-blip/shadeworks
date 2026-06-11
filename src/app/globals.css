@@ -16,13 +16,13 @@
   --color-ink-surface: #1a1a1a;
   --color-ink-border: #2a2a2a;
 
-  --color-bone: #f5f0e6;
-  --color-bone-muted: #b8b1a3;
-  --color-bone-dim: #8a8275;
+  --color-bone: #f2f2f2;
+  --color-bone-muted: #a8a8a8;
+  --color-bone-dim: #6e6e6e;
 
-  --color-gold: #c9a961;
-  --color-gold-light: #e6c77e;
-  --color-gold-dark: #a88838;
+  --color-gold: #ffd400;
+  --color-gold-light: #ffe05c;
+  --color-gold-dark: #d9b200;
 
   --color-crimson: #e5253d;
 
@@ -77,37 +77,37 @@
 /* shadcn variables — remapped to shadeworks brand for dark mode */
 :root {
   --background: #0a0a0a;
-  --foreground: #f5f0e6;
+  --foreground: #f2f2f2;
   --card: #111111;
-  --card-foreground: #f5f0e6;
+  --card-foreground: #f2f2f2;
   --popover: #111111;
-  --popover-foreground: #f5f0e6;
-  --primary: #c9a961;
+  --popover-foreground: #f2f2f2;
+  --primary: #ffd400;
   --primary-foreground: #0a0a0a;
   --secondary: #1a1a1a;
-  --secondary-foreground: #f5f0e6;
+  --secondary-foreground: #f2f2f2;
   --muted: #1a1a1a;
-  --muted-foreground: #8a8275;
-  --accent: #c9a961;
+  --muted-foreground: #6e6e6e;
+  --accent: #ffd400;
   --accent-foreground: #0a0a0a;
   --destructive: oklch(0.704 0.191 22.216);
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.1);
-  --ring: #c9a961;
-  --chart-1: #c9a961;
-  --chart-2: #e6c77e;
-  --chart-3: #a88838;
-  --chart-4: #8a8275;
-  --chart-5: #b8b1a3;
+  --ring: #ffd400;
+  --chart-1: #ffd400;
+  --chart-2: #ffe05c;
+  --chart-3: #d9b200;
+  --chart-4: #6e6e6e;
+  --chart-5: #a8a8a8;
   --radius: 0.625rem;
   --sidebar: #0a0a0a;
-  --sidebar-foreground: #f5f0e6;
-  --sidebar-primary: #c9a961;
+  --sidebar-foreground: #f2f2f2;
+  --sidebar-primary: #ffd400;
   --sidebar-primary-foreground: #0a0a0a;
   --sidebar-accent: #1a1a1a;
-  --sidebar-accent-foreground: #f5f0e6;
+  --sidebar-accent-foreground: #f2f2f2;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #c9a961;
+  --sidebar-ring: #ffd400;
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -119,14 +119,14 @@
   }
   html, body {
     background: #0a0a0a;
-    color: #f5f0e6;
+    color: #f2f2f2;
   }
   body {
     font-family: var(--font-geist-sans), system-ui, sans-serif;
     overflow-x: hidden;
   }
   ::selection {
-    background: #c9a961;
+    background: #ffd400;
     color: #0a0a0a;
   }
 
@@ -134,12 +134,12 @@
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: #0a0a0a; }
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #c9a961, #a88838);
+    background: linear-gradient(180deg, #ffd400, #d9b200);
     border-radius: 4px;
-    box-shadow: 0 0 8px rgba(201, 169, 97, 0.3);
+    box-shadow: 0 0 8px rgba(255, 212, 0, 0.3);
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #e6c77e, #c9a961);
+    background: linear-gradient(180deg, #ffe05c, #ffd400);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -158,27 +158,27 @@
    ─────────────────────────────────────────────────────────────── */
 @layer utilities {
   .bg-halftone {
-    background-image: radial-gradient(circle, rgba(201, 169, 97, 0.25) 1.2px, transparent 1.5px);
+    background-image: radial-gradient(circle, rgba(255, 212, 0, 0.25) 1.2px, transparent 1.5px);
     background-size: 20px 20px;
   }
   .bg-halftone-dense {
-    background-image: radial-gradient(circle, rgba(201, 169, 97, 0.4) 1.4px, transparent 1.6px);
+    background-image: radial-gradient(circle, rgba(255, 212, 0, 0.4) 1.4px, transparent 1.6px);
     background-size: 14px 14px;
   }
   .bg-card-gradient {
     background-image: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%);
   }
   .bg-gold-gradient {
-    background-image: linear-gradient(135deg, #c9a961 0%, #a88838 100%);
+    background-image: linear-gradient(135deg, #ffd400 0%, #d9b200 100%);
   }
   .shadow-gold {
-    box-shadow: 0 0 20px rgba(201, 169, 97, 0.15);
+    box-shadow: 0 0 20px rgba(255, 212, 0, 0.15);
   }
   .shadow-gold-lg {
-    box-shadow: 0 0 40px rgba(201, 169, 97, 0.2);
+    box-shadow: 0 0 40px rgba(255, 212, 0, 0.2);
   }
   .shadow-gold-glow {
-    box-shadow: 0 0 60px rgba(201, 169, 97, 0.25);
+    box-shadow: 0 0 60px rgba(255, 212, 0, 0.25);
   }
 
   @keyframes marquee {
@@ -233,34 +233,34 @@
     transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .glass-card:hover {
-    border-color: rgba(201, 169, 97, 0.22);
+    border-color: rgba(255, 212, 0, 0.22);
     box-shadow:
       0 12px 48px rgba(0, 0, 0, 0.5),
-      0 0 40px rgba(201, 169, 97, 0.08),
+      0 0 40px rgba(255, 212, 0, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transform: translateY(-2px);
   }
   .glass-card-gold {
     background: linear-gradient(
       145deg,
-      rgba(201, 169, 97, 0.08) 0%,
-      rgba(201, 169, 97, 0.015) 100%
+      rgba(255, 212, 0, 0.08) 0%,
+      rgba(255, 212, 0, 0.015) 100%
     );
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
-    border: 1px solid rgba(201, 169, 97, 0.18);
+    border: 1px solid rgba(255, 212, 0, 0.18);
     box-shadow:
       0 8px 32px rgba(0, 0, 0, 0.4),
-      0 0 60px rgba(201, 169, 97, 0.08),
-      inset 0 1px 0 rgba(201, 169, 97, 0.12);
+      0 0 60px rgba(255, 212, 0, 0.08),
+      inset 0 1px 0 rgba(255, 212, 0, 0.12);
     transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .glass-card-gold:hover {
-    border-color: rgba(201, 169, 97, 0.4);
+    border-color: rgba(255, 212, 0, 0.4);
     box-shadow:
       0 12px 56px rgba(0, 0, 0, 0.5),
-      0 0 100px rgba(201, 169, 97, 0.15),
-      inset 0 1px 0 rgba(201, 169, 97, 0.18);
+      0 0 100px rgba(255, 212, 0, 0.15),
+      inset 0 1px 0 rgba(255, 212, 0, 0.18);
     transform: translateY(-2px);
   }
 
@@ -268,9 +268,9 @@
   .text-gold-gradient {
     background-image: linear-gradient(
       135deg,
-      #e6c77e 0%,
-      #c9a961 50%,
-      #a88838 100%
+      #ffe05c 0%,
+      #ffd400 50%,
+      #d9b200 100%
     );
     -webkit-background-clip: text;
     background-clip: text;

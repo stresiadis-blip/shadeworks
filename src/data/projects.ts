@@ -240,7 +240,7 @@ export const PROJECTS: Project[] = [
 ];
 
 export const STATUS_COLOR: Record<ProjectStatus, string> = {
-  LIVE: "#C9A961",
-  CONCEPT: "#8a8275",
-  "IN PROGRESS": "#b8b1a3",
+  LIVE: "#ffd400",
+  CONCEPT: "#6e6e6e",
+  "IN PROGRESS": "#a8a8a8",
 };

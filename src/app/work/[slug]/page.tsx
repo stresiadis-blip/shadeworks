@@ -44,8 +44,8 @@ export default async function ProjectPage({
           <span
             className="font-mono text-[10px] tracking-wider border px-2.5 py-1"
             style={{
-              color: project.status === "LIVE" ? "#c9a961" : "#8a8275",
-              borderColor: project.status === "LIVE" ? "#c9a961" : "#8a827555",
+              color: project.status === "LIVE" ? "#ffd400" : "#6e6e6e",
+              borderColor: project.status === "LIVE" ? "#ffd400" : "#6e6e6e55",
             }}
           >
             {project.status}

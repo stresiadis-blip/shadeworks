@@ -248,8 +248,8 @@ function ReducedMotionGrid({ category }: { category: ProjectCategory | "all" }) 
               <span
                 className="font-mono text-[10px] tracking-wider border px-2 py-1"
                 style={{
-                  color: p.status === "LIVE" ? "#c9a961" : "#8a8275",
-                  borderColor: p.status === "LIVE" ? "#c9a961" : "#8a827555",
+                  color: p.status === "LIVE" ? "#ffd400" : "#6e6e6e",
+                  borderColor: p.status === "LIVE" ? "#ffd400" : "#6e6e6e55",
                 }}
               >
                 {p.status}

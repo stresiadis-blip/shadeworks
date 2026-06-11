@@ -25,8 +25,8 @@ export function ToastProvider() {
       style={
         {
           "--normal-bg": "#111111",
-          "--normal-text": "#f5f0e6",
-          "--normal-border": "rgba(201, 169, 97, 0.25)",
+          "--normal-text": "#f2f2f2",
+          "--normal-border": "rgba(255, 212, 0, 0.25)",
           "--border-radius": "0.5rem",
         } as React.CSSProperties
       }
