@@ -52,8 +52,180 @@ function halftoneCorner(
   ctx.restore();
 }
 
+// Card image zone (unscaled, in the 512×640 card space): upper ~55%.
+const IZ = { x: 20, y: 76, w: 472, h: 282 };
+
+/** FerdiPoker is the only shipped product — its real screenshot lives here. */
+const FERDI_SRC = "/work/ferdipoker.jpg";
+// cache the loaded screenshot so we only fetch it once across all card draws
+let ferdiImg: HTMLImageElement | null = null;
+
+/** small seeded PRNG (LCG) so each concept mockup is unique but stable */
+function seeded(seed: number) {
+  let s = (seed * 2654435761) % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => (s = (s * 16807) % 2147483647) / 2147483647;
+}
+
+/** cover-fit + desaturate-ish draw of a real image into the card image zone */
+function drawCoverImage(
+  ctx: CanvasRenderingContext2D,
+  s: (n: number) => number,
+  img: HTMLImageElement
+) {
+  const zx = s(IZ.x), zy = s(IZ.y), zw = s(IZ.w), zh = s(IZ.h);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(zx, zy, zw, zh);
+  ctx.clip();
+  const ar = img.width / img.height;
+  const zar = zw / zh;
+  let dw = zw, dh = zh, dx = zx, dy = zy;
+  if (ar > zar) { dw = zh * ar; dx = zx - (dw - zw) / 2; }
+  else { dh = zw / ar; dy = zy - (dh - zh) / 2; }
+  ctx.drawImage(img, dx, dy, dw, dh);
+  // noir grade: knock back saturation with a dark multiply + raise contrast edge
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(zx, zy, zw, zh);
+  const grad = ctx.createLinearGradient(0, zy, 0, zy + zh);
+  grad.addColorStop(0, "rgba(0,0,0,0.05)");
+  grad.addColorStop(1, "rgba(0,0,0,0.55)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(zx, zy, zw, zh);
+  ctx.restore();
+}
+
 /**
- * Noir card texture — high-contrast Sin City comic panel.
+ * Procedural noir UI mockup for a CONCEPT card — an honest stylized sketch of
+ * the project's category (NOT a fake screenshot). Lines only, one accent tick.
+ */
+function drawMockup(
+  ctx: CanvasRenderingContext2D,
+  s: (n: number) => number,
+  category: ProjectCategory,
+  inverted: boolean,
+  accent: string,
+  seed: number
+) {
+  const rnd = seeded(seed);
+  const zx = s(IZ.x), zy = s(IZ.y), zw = s(IZ.w), zh = s(IZ.h);
+  const line = inverted ? "rgba(10,10,10,0.82)" : "rgba(247,244,236,0.8)";
+  const dim = inverted ? "rgba(10,10,10,0.32)" : "rgba(247,244,236,0.28)";
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(zx, zy, zw, zh);
+  ctx.clip();
+  ctx.translate(zx, zy);
+
+  if (category === "custom-code") {
+    // terminal: title bar + 3 dots, then code rows of varying width
+    ctx.fillStyle = dim;
+    ctx.fillRect(s(18), s(18), zw - s(36), s(26));
+    ctx.fillStyle = line;
+    for (let d = 0; d < 3; d++) {
+      ctx.beginPath();
+      ctx.arc(s(34) + d * s(20), s(31), s(4), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    let yy = s(70);
+    for (let r = 0; r < 9; r++) {
+      const indent = s(24 + (rnd() < 0.4 ? 24 : 0) + (rnd() < 0.2 ? 24 : 0));
+      const wdt = s(70 + rnd() * 240);
+      ctx.fillStyle = r === 4 && rnd() > 0.3 ? accent : line;
+      ctx.globalAlpha = 0.55 + rnd() * 0.4;
+      ctx.fillRect(indent, yy, wdt, s(8));
+      // occasional syntax tick
+      if (rnd() > 0.6) {
+        ctx.fillStyle = accent;
+        ctx.fillRect(indent + wdt + s(10), yy, s(18), s(8));
+      }
+      ctx.globalAlpha = 1;
+      yy += s(24);
+    }
+    // cursor block
+    ctx.fillStyle = accent;
+    ctx.fillRect(s(24), yy, s(14), s(16));
+  } else if (category === "control-panels") {
+    // dashboard: KPI blocks, bar chart, sparkline, gauge arc
+    for (let k = 0; k < 3; k++) {
+      const bx = s(18) + k * s((IZ.w - 36) / 3);
+      ctx.strokeStyle = dim;
+      ctx.lineWidth = s(1);
+      ctx.strokeRect(bx, s(18), s((IZ.w - 36) / 3 - 12), s(56));
+      ctx.fillStyle = k === 1 ? accent : line;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(bx + s(10), s(32), s(40 + rnd() * 50), s(14));
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = line;
+      ctx.fillRect(bx + s(10), s(54), s(60), s(7));
+      ctx.globalAlpha = 1;
+    }
+    // bar chart
+    const baseY = s(212);
+    for (let b = 0; b < 8; b++) {
+      const bh = s(20 + rnd() * 96);
+      ctx.fillStyle = b === 5 ? accent : line;
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(s(24) + b * s(30), baseY - bh, s(18), bh);
+    }
+    ctx.globalAlpha = 1;
+    // sparkline
+    ctx.strokeStyle = line;
+    ctx.lineWidth = s(2);
+    ctx.beginPath();
+    for (let p = 0; p <= 10; p++) {
+      const px = s(280) + p * s(16);
+      const py = s(120) + Math.sin(p + seed) * s(18) - rnd() * s(14);
+      p === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  } else {
+    // megaphone: rising line chart with nodes + audience dots + signal wave
+    const pts: { x: number; y: number }[] = [];
+    let py = s(150);
+    for (let p = 0; p <= 7; p++) {
+      const px = s(20) + p * s(48);
+      if (p > 0) py -= s(6 + rnd() * 26);
+      pts.push({ x: px, y: py });
+    }
+    ctx.strokeStyle = line;
+    ctx.lineWidth = s(2.5);
+    ctx.beginPath();
+    pts.forEach((pt, i) => (i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
+    ctx.stroke();
+    pts.forEach((pt, i) => {
+      ctx.fillStyle = i === 5 ? accent : line;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, s(4), 0, Math.PI * 2);
+      ctx.fill();
+    });
+    // audience dots spreading from lower-left
+    const ox = s(60), oy = s(232);
+    for (let d = 0; d < 26; d++) {
+      const ang = (d / 26) * Math.PI - Math.PI * 0.1;
+      const rad = s(20 + rnd() * 150);
+      ctx.fillStyle = d % 9 === 0 ? accent : dim;
+      ctx.beginPath();
+      ctx.arc(ox + Math.cos(ang) * rad, oy - Math.abs(Math.sin(ang)) * rad * 0.5, s(3.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // signal wave at bottom
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = s(2);
+    ctx.beginPath();
+    for (let x = 0; x <= zw; x += s(6)) {
+      const yy = s(252) + Math.sin(x / s(22) + seed) * s(10);
+      x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Noir card texture — high-contrast Sin City comic panel with a preview zone.
  * Three variants: NEGATIVE (black/bone, most), INVERTED (bone/black, ~1 in 5),
  * FEATURED (FerdiPoker — black with blood-red accents, the "red dress").
  */
@@ -138,27 +310,79 @@ function makeCardTexture(project: Project, isMobile: boolean): THREE.CanvasTextu
   }
   ctx.fillText(status, W - s(30) - stW + s(12), s(57));
 
+  // ── image / preview zone (upper ~55%) ──
+  const zx = s(IZ.x), zy = s(IZ.y), zw = s(IZ.w), zh = s(IZ.h);
+  // zone panel bg — slightly off the card bg for a framed preview
+  ctx.fillStyle = inverted ? "#e8e3d6" : "#070708";
+  ctx.fillRect(zx, zy, zw, zh);
+  const mockAccent = featured ? NOIR.red : NOIR.yellow;
+  if (featured) {
+    if (ferdiImg && ferdiImg.complete && ferdiImg.naturalWidth > 0) {
+      drawCoverImage(ctx, s, ferdiImg);
+    } else {
+      // honest noir placeholder until the real screenshot is dropped in
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(zx, zy, zw, zh);
+      ctx.clip();
+      ctx.fillStyle = "rgba(209,31,42,0.10)";
+      ctx.fillRect(zx, zy, zw, zh);
+      ctx.font = `900 ${s(34)}px "Arial Black", Impact, sans-serif`;
+      ctx.fillStyle = "rgba(247,244,236,0.85)";
+      ctx.fillText("FERDIPOKER.RO", zx + s(22), zy + zh / 2);
+      ctx.font = `${s(15)}px ui-monospace, monospace`;
+      ctx.fillStyle = NOIR.red;
+      ctx.fillText("LIVE · MTT POKER TRAINING", zx + s(22), zy + zh / 2 + s(30));
+      ctx.restore();
+    }
+  } else {
+    drawMockup(ctx, s, project.category, inverted, mockAccent, n * 97 + 13);
+  }
+  // halftone over one corner of the image zone
+  ctx.save();
+  ctx.fillStyle = inverted ? "rgba(0,0,0,0.16)" : "rgba(247,244,236,0.14)";
+  for (let gy = 0; gy < 5; gy++) {
+    for (let gx = 0; gx < 5; gx++) {
+      const r = s(2.6) * (1 - (gx + gy) / 12);
+      if (r <= 0) continue;
+      ctx.beginPath();
+      ctx.arc(zx + s(16) + gx * s(10), zy + s(16) + gy * s(10), r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+  // zone frame + separator line under it
+  ctx.strokeStyle = inverted ? "rgba(0,0,0,0.4)" : "rgba(247,244,236,0.22)";
+  ctx.lineWidth = s(1);
+  ctx.strokeRect(zx, zy, zw, zh);
+  ctx.strokeStyle = featured ? NOIR.red : inverted ? "rgba(0,0,0,0.5)" : "rgba(247,244,236,0.4)";
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(zx, zy + zh + s(6));
+  ctx.lineTo(zx + zw, zy + zh + s(6));
+  ctx.stroke();
+
   // ── title — heavy condensed display, large ──
   ctx.fillStyle = fg;
   const title = project.title.toUpperCase();
-  let titleSize = 58;
+  let titleSize = 50;
   ctx.font = `900 ${s(titleSize)}px "Arial Black", Impact, sans-serif`;
-  while (ctx.measureText(title).width > W - s(56) && titleSize > 32) {
+  while (ctx.measureText(title).width > W - s(56) && titleSize > 30) {
     titleSize -= 3;
     ctx.font = `900 ${s(titleSize)}px "Arial Black", Impact, sans-serif`;
   }
-  const titleY = s(370);
+  const titleY = s(414);
   ctx.fillText(title, s(28), titleY, W - s(56));
 
   // title underline — blood red for featured, accent rule otherwise
   ctx.fillStyle = featured ? NOIR.red : inverted ? NOIR.black : NOIR.bone;
-  ctx.fillRect(s(28), titleY + s(22), s(featured ? 130 : 64), s(featured ? 7 : 4));
+  ctx.fillRect(s(28), titleY + s(18), s(featured ? 130 : 64), s(featured ? 7 : 4));
 
-  // year — under the underline, right
+  // year — top-right of metadata band
   ctx.font = `${s(16)}px ui-monospace, monospace`;
   ctx.fillStyle = sub;
   ctx.textAlign = "right";
-  ctx.fillText(project.year, W - s(28), s(366));
+  ctx.fillText(project.year, W - s(28), s(410));
   ctx.textAlign = "left";
 
   // ── description — 2 lines max, readable ──
@@ -166,7 +390,7 @@ function makeCardTexture(project: Project, isMobile: boolean): THREE.CanvasTextu
   ctx.fillStyle = sub;
   const words = project.description.toUpperCase().split(" ");
   let line = "";
-  let y = s(434);
+  let y = s(470);
   let lines = 0;
   for (const w of words) {
     const test = line ? line + " " + w : w;
@@ -208,12 +432,33 @@ function makeCardTexture(project: Project, isMobile: boolean): THREE.CanvasTextu
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
+
+  // FerdiPoker — load the real screenshot async, then repaint its image zone.
+  if (featured && !(ferdiImg && ferdiImg.complete && ferdiImg.naturalWidth > 0)) {
+    const img = new Image();
+    img.onload = () => {
+      ferdiImg = img;
+      drawCoverImage(ctx, s, img);
+      // restore the zone frame over the freshly drawn image
+      ctx.strokeStyle = NOIR.red;
+      ctx.lineWidth = s(1);
+      ctx.strokeRect(s(IZ.x), s(IZ.y), s(IZ.w), s(IZ.h));
+      texture.needsUpdate = true;
+    };
+    img.onerror = () => {
+      // asset not present yet — noir placeholder stays. User drops it later.
+      console.warn(`[gallery] Missing FerdiPoker screenshot at public${FERDI_SRC} — using placeholder.`);
+    };
+    img.src = FERDI_SRC;
+  }
+
   return texture;
 }
 
 /**
- * Sin City backdrop — hard black/white noir city painted on a giant cylinder
- * around the gallery. Selective color only: the red car, the yellow dress.
+ * Noir atmosphere backdrop — deep murky city air on a giant cylinder behind
+ * the gallery. Soft fog bands, a faint distant skyline silhouette mostly
+ * swallowed by haze, and a pale moon veiled by fog. No figures, no hard shapes.
  */
 function makeBackdropTexture(isMobile: boolean): THREE.CanvasTexture {
   const scale = isMobile ? 0.5 : 1;
@@ -224,307 +469,88 @@ function makeBackdropTexture(isMobile: boolean): THREE.CanvasTexture {
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
   const s = (n: number) => n * scale;
-  const WHITE = "#f2f2f2";
-  const RED = "#e5253d";
-  const YELLOW = "#ffd400";
 
-  // pitch black night
+  // deep night base
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, W, H);
 
-  // moon — huge, stark white, halo
+  // murky vertical haze — lighter toward the horizon band, dark top & bottom
+  const haze = ctx.createLinearGradient(0, 0, 0, H);
+  haze.addColorStop(0, "#000000");
+  haze.addColorStop(0.55, "#070708");
+  haze.addColorStop(0.72, "#101013"); // horizon glow band
+  haze.addColorStop(0.82, "#0a0a0c");
+  haze.addColorStop(1, "#000000");
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, 0, W, H);
+
+  const horizon = s(940);
+
+  // veiled moon — pale, soft halo, sits in the haze band
   const moonX = s(2750);
-  const moonY = s(230);
-  const halo = ctx.createRadialGradient(moonX, moonY, s(80), moonX, moonY, s(420));
-  halo.addColorStop(0, "rgba(242,242,242,0.22)");
-  halo.addColorStop(1, "rgba(242,242,242,0)");
+  const moonY = s(560);
+  const halo = ctx.createRadialGradient(moonX, moonY, s(40), moonX, moonY, s(460));
+  halo.addColorStop(0, "rgba(210,214,224,0.18)");
+  halo.addColorStop(1, "rgba(210,214,224,0)");
   ctx.fillStyle = halo;
-  ctx.fillRect(moonX - s(420), moonY - s(420), s(840), s(840));
-  ctx.fillStyle = WHITE;
+  ctx.fillRect(moonX - s(460), moonY - s(460), s(920), s(920));
+  const moon = ctx.createRadialGradient(moonX, moonY, s(10), moonX, moonY, s(120));
+  moon.addColorStop(0, "rgba(225,228,235,0.55)");
+  moon.addColorStop(0.7, "rgba(200,205,215,0.32)");
+  moon.addColorStop(1, "rgba(200,205,215,0)");
+  ctx.fillStyle = moon;
   ctx.beginPath();
-  ctx.arc(moonX, moonY, s(130), 0, Math.PI * 2);
+  ctx.arc(moonX, moonY, s(120), 0, Math.PI * 2);
   ctx.fill();
 
-  // street level + horizon
-  const streetY = s(950);
-
-  // skyline — black monoliths with stark white rim light + sparse lit windows
-  let bx = 0;
-  let bi = 0;
+  // faint distant skyline silhouette — barely-there building shapes, low,
+  // mostly swallowed by fog; occasional tiny warm/red window light.
+  let bx = -s(40);
+  let bi = 7;
   while (bx < W) {
     const seed = (bi * 73 + 31) % 100;
-    const bw = s(120 + (seed % 5) * 70);
-    const bh = s(260 + ((seed * 7) % 420));
-    const top = streetY - bh;
-    ctx.fillStyle = "#050505";
+    const bw = s(140 + (seed % 6) * 64);
+    const bh = s(120 + ((seed * 7) % 320));
+    const top = horizon - bh;
+    // building body — only a touch above the haze, very dark
+    ctx.fillStyle = "rgba(8,9,12,0.9)";
     ctx.fillRect(bx, top, bw, bh);
-    // white rim light on one vertical edge + roofline
-    ctx.strokeStyle = `rgba(242,242,242,${0.25 + (seed % 4) * 0.12})`;
-    ctx.lineWidth = s(3);
-    ctx.beginPath();
-    ctx.moveTo(bx + bw, top);
-    ctx.lineTo(bx, top);
-    ctx.lineTo(bx, top + bh);
-    ctx.stroke();
-    // lit windows — sparse, harsh white
-    const cols = Math.max(2, Math.floor(bw / s(46)));
-    const rows = Math.max(3, Math.floor(bh / s(60)));
+    // sparse window lights, faint, mostly warm with a rare red
+    const cols = Math.max(2, Math.floor(bw / s(54)));
+    const rows = Math.max(2, Math.floor(bh / s(72)));
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        if ((seed * (r + 2) * (c + 3)) % 17 < 2) {
-          ctx.fillStyle = `rgba(242,242,242,${0.5 + ((seed * r) % 5) * 0.1})`;
-          ctx.fillRect(bx + s(14) + c * s(46), top + s(20) + r * s(60), s(18), s(26));
+        if ((seed * (r + 2) * (c + 3)) % 23 < 1) {
+          const red = (seed * (r + 1) * (c + 1)) % 11 === 0;
+          ctx.fillStyle = red
+            ? "rgba(209,31,42,0.32)"
+            : `rgba(196,176,128,${0.10 + ((seed * r) % 4) * 0.04})`;
+          ctx.fillRect(bx + s(16) + c * s(54), top + s(22) + r * s(72), s(14), s(20));
         }
       }
     }
-    bx += bw + s(8 + (seed % 3) * 20);
+    bx += bw + s(6 + (seed % 4) * 14);
     bi++;
   }
 
-  // street — dark asphalt with white center dashes and curb light
-  ctx.fillStyle = "#080808";
-  ctx.fillRect(0, streetY, W, H - streetY);
-  ctx.strokeStyle = "rgba(242,242,242,0.55)";
-  ctx.lineWidth = s(3);
-  ctx.beginPath();
-  ctx.moveTo(0, streetY + s(2));
-  ctx.lineTo(W, streetY + s(2));
-  ctx.stroke();
-  ctx.lineWidth = s(6);
-  ctx.setLineDash([s(70), s(60)]);
-  ctx.strokeStyle = "rgba(242,242,242,0.4)";
-  ctx.beginPath();
-  ctx.moveTo(0, streetY + s(170));
-  ctx.lineTo(W, streetY + s(170));
-  ctx.stroke();
-  ctx.setLineDash([]);
+  // fog veil over the skyline — pushes buildings deep into the murk
+  const fog = ctx.createLinearGradient(0, horizon - s(360), 0, horizon + s(40));
+  fog.addColorStop(0, "rgba(8,9,12,0)");
+  fog.addColorStop(0.7, "rgba(8,9,12,0.6)");
+  fog.addColorStop(1, "rgba(6,6,9,0.92)");
+  ctx.fillStyle = fog;
+  ctx.fillRect(0, horizon - s(360), W, s(400));
 
-  // ── SCENE 1: gangster, trench coat + fedora, under a streetlamp ──
-  {
-    const x = s(420);
-    const ground = streetY + s(40);
-    // lamp pole + head
-    ctx.strokeStyle = WHITE;
-    ctx.lineWidth = s(7);
-    ctx.beginPath();
-    ctx.moveTo(x + s(180), ground);
-    ctx.lineTo(x + s(180), ground - s(560));
-    ctx.lineTo(x + s(110), ground - s(560));
-    ctx.stroke();
-    // light cone
-    const cone = ctx.createLinearGradient(0, ground - s(540), 0, ground);
-    cone.addColorStop(0, "rgba(242,242,242,0.5)");
-    cone.addColorStop(1, "rgba(242,242,242,0.06)");
-    ctx.fillStyle = cone;
-    ctx.beginPath();
-    ctx.moveTo(x + s(110), ground - s(545));
-    ctx.lineTo(x - s(60), ground);
-    ctx.lineTo(x + s(260), ground);
-    ctx.closePath();
-    ctx.fill();
-    // figure — solid black silhouette inside the light
-    ctx.fillStyle = "#000000";
-    const fx = x + s(90);
-    // legs
-    ctx.fillRect(fx - s(28), ground - s(120), s(22), s(120));
-    ctx.fillRect(fx + s(8), ground - s(120), s(22), s(120));
-    // trench coat — flared
-    ctx.beginPath();
-    ctx.moveTo(fx - s(36), ground - s(330));
-    ctx.lineTo(fx + s(38), ground - s(330));
-    ctx.lineTo(fx + s(64), ground - s(100));
-    ctx.lineTo(fx - s(62), ground - s(100));
-    ctx.closePath();
-    ctx.fill();
-    // shoulders + head + fedora
-    ctx.fillRect(fx - s(40), ground - s(360), s(82), s(40));
-    ctx.beginPath();
-    ctx.arc(fx, ground - s(385), s(26), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillRect(fx - s(48), ground - s(404), s(98), s(10)); // brim
-    ctx.beginPath(); // crown
-    ctx.moveTo(fx - s(26), ground - s(404));
-    ctx.lineTo(fx - s(18), ground - s(442));
-    ctx.lineTo(fx + s(20), ground - s(442));
-    ctx.lineTo(fx + s(28), ground - s(404));
-    ctx.closePath();
-    ctx.fill();
-    // cigarette ember — single crimson dot (one colored element in this zone)
-    ctx.fillStyle = RED;
-    ctx.beginPath();
-    ctx.arc(fx + s(30), ground - s(376), s(4), 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // ── SCENE 2: red car driving down the street ──
-  {
-    const x = s(1280);
-    const y = streetY + s(95);
-    // speed lines behind
-    ctx.strokeStyle = "rgba(242,242,242,0.35)";
-    ctx.lineWidth = s(4);
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.moveTo(x - s(420) - i * s(28), y - s(20) - i * s(22));
-      ctx.lineTo(x - s(140) - i * s(14), y - s(20) - i * s(22));
-      ctx.stroke();
-    }
-    // red glow
-    const glow = ctx.createRadialGradient(x + s(120), y - s(40), s(20), x + s(120), y - s(40), s(420));
-    glow.addColorStop(0, "rgba(229,37,61,0.30)");
-    glow.addColorStop(1, "rgba(229,37,61,0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(x - s(320), y - s(420), s(880), s(700));
-    // body — classic sedan profile
-    ctx.fillStyle = RED;
-    ctx.beginPath();
-    ctx.moveTo(x - s(150), y);
-    ctx.lineTo(x - s(135), y - s(52));
-    ctx.lineTo(x - s(50), y - s(62));
-    ctx.lineTo(x - s(10), y - s(108));
-    ctx.lineTo(x + s(170), y - s(108));
-    ctx.lineTo(x + s(230), y - s(60));
-    ctx.lineTo(x + s(330), y - s(48));
-    ctx.lineTo(x + s(340), y);
-    ctx.closePath();
-    ctx.fill();
-    // windows — black
-    ctx.fillStyle = "#000000";
-    ctx.beginPath();
-    ctx.moveTo(x + s(2), y - s(100));
-    ctx.lineTo(x + s(160), y - s(100));
-    ctx.lineTo(x + s(205), y - s(64));
-    ctx.lineTo(x - s(30), y - s(64));
-    ctx.closePath();
-    ctx.fill();
-    // wheels
-    for (const wx of [x - s(60), x + s(240)]) {
-      ctx.fillStyle = "#000000";
-      ctx.beginPath();
-      ctx.arc(wx, y, s(42), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = WHITE;
-      ctx.lineWidth = s(5);
-      ctx.beginPath();
-      ctx.arc(wx, y, s(20), 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    // headlight beam
-    ctx.fillStyle = "rgba(242,242,242,0.35)";
-    ctx.beginPath();
-    ctx.moveTo(x + s(338), y - s(46));
-    ctx.lineTo(x + s(560), y - s(70));
-    ctx.lineTo(x + s(560), y - s(8));
-    ctx.lineTo(x + s(340), y - s(28));
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // ── SCENE 3: woman in the yellow dress ──
-  {
-    const x = s(2300);
-    const ground = streetY + s(30);
-    // yellow glow
-    const glow = ctx.createRadialGradient(x, ground - s(220), s(20), x, ground - s(220), s(380));
-    glow.addColorStop(0, "rgba(255,212,0,0.28)");
-    glow.addColorStop(1, "rgba(255,212,0,0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(x - s(380), ground - s(600), s(760), s(660));
-    // legs — black silhouette
-    ctx.fillStyle = "#000000";
-    ctx.beginPath();
-    ctx.moveTo(x - s(18), ground - s(200));
-    ctx.lineTo(x + s(2), ground - s(200));
-    ctx.lineTo(x - s(8), ground);
-    ctx.lineTo(x - s(26), ground);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(x + s(8), ground - s(200));
-    ctx.lineTo(x + s(28), ground - s(200));
-    ctx.lineTo(x + s(44), ground);
-    ctx.lineTo(x + s(26), ground);
-    ctx.closePath();
-    ctx.fill();
-    // dress — fitted bodice, skirt caught in the wind (YELLOW)
-    ctx.fillStyle = YELLOW;
-    ctx.beginPath();
-    ctx.moveTo(x - s(24), ground - s(420)); // left shoulder
-    ctx.lineTo(x + s(24), ground - s(420)); // right shoulder
-    ctx.lineTo(x + s(18), ground - s(330)); // waist right
-    ctx.lineTo(x + s(120), ground - s(190)); // skirt blown right
-    ctx.lineTo(x + s(60), ground - s(180));
-    ctx.lineTo(x + s(34), ground - s(195));
-    ctx.lineTo(x - s(34), ground - s(195)); // hem left
-    ctx.lineTo(x - s(20), ground - s(330)); // waist left
-    ctx.closePath();
-    ctx.fill();
-    // arms + head + hair — black
-    ctx.fillStyle = "#000000";
-    ctx.beginPath(); // head
-    ctx.arc(x, ground - s(455), s(24), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath(); // hair sweep
-    ctx.moveTo(x - s(20), ground - s(470));
-    ctx.quadraticCurveTo(x - s(70), ground - s(430), x - s(48), ground - s(360));
-    ctx.lineTo(x - s(24), ground - s(400));
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillRect(x - s(30), ground - s(420), s(10), s(100)); // left arm
-    ctx.beginPath(); // right arm raised
-    ctx.moveTo(x + s(20), ground - s(415));
-    ctx.lineTo(x + s(64), ground - s(480));
-    ctx.lineTo(x + s(74), ground - s(468));
-    ctx.lineTo(x + s(30), ground - s(402));
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // ── SCENE 4: man in a suit, lit doorway ──
-  {
-    const x = s(3260);
-    const ground = streetY + s(10);
-    // doorway — stark white rectangle
-    ctx.fillStyle = WHITE;
-    ctx.fillRect(x - s(110), ground - s(520), s(220), s(520));
-    // figure — black silhouette in the doorway
-    ctx.fillStyle = "#000000";
-    const fx = x;
-    ctx.fillRect(fx - s(26), ground - s(130), s(20), s(130)); // legs
-    ctx.fillRect(fx + s(6), ground - s(130), s(20), s(130));
-    ctx.beginPath(); // suit jacket
-    ctx.moveTo(fx - s(44), ground - s(380));
-    ctx.lineTo(fx + s(44), ground - s(380));
-    ctx.lineTo(fx + s(36), ground - s(120));
-    ctx.lineTo(fx - s(36), ground - s(120));
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath(); // head
-    ctx.arc(fx, ground - s(412), s(26), 0, Math.PI * 2);
-    ctx.fill();
-    // white shirt V + tie cut INTO the black suit
-    ctx.fillStyle = WHITE;
-    ctx.beginPath();
-    ctx.moveTo(fx - s(16), ground - s(380));
-    ctx.lineTo(fx + s(16), ground - s(380));
-    ctx.lineTo(fx, ground - s(330));
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(fx - s(4), ground - s(372), s(8), s(70)); // tie
-  }
-
-  // rain — hard diagonal streaks over everything
-  ctx.lineWidth = s(2);
-  for (let i = 0; i < 700; i++) {
-    const rx = (i * 379) % W;
-    const ry = ((i * 691) % H) - s(60);
-    const len = s(50 + ((i * 37) % 90));
-    ctx.strokeStyle = `rgba(242,242,242,${0.04 + ((i * 13) % 9) * 0.012})`;
-    ctx.beginPath();
-    ctx.moveTo(rx, ry);
-    ctx.lineTo(rx - len * 0.25, ry + len);
-    ctx.stroke();
+  // soft drifting haze blobs for volumetric depth
+  for (let i = 0; i < 7; i++) {
+    const hx = (i * 631) % W;
+    const hy = horizon - s(120) - ((i * 217) % 260);
+    const hr = s(280 + ((i * 97) % 240));
+    const g = ctx.createRadialGradient(hx, hy, s(10), hx, hy, hr);
+    g.addColorStop(0, `rgba(24,26,32,${0.10 + (i % 3) * 0.03})`);
+    g.addColorStop(1, "rgba(24,26,32,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(hx - hr, hy - hr, hr * 2, hr * 2);
   }
 
   const texture = new THREE.CanvasTexture(canvas);

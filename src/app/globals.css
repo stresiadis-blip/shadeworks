@@ -340,33 +340,81 @@
     will-change: transform;
   }
 
-  /* rain — single diagonal streak tile, scrolled vertically */
-  @keyframes rain-fall {
-    0%   { background-position: 0 0, 0 0, 0 0; }
-    100% { background-position: -120px 900px, -200px 1400px, -80px 700px; }
+  /* rain — fine thin streaks caught in light, no shadows. Two depth layers:
+     a near layer (faster, sparse) and a far drizzle (slow, very faint). */
+  @keyframes rain-fall-near {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: -70px 760px, -40px 980px; }
+  }
+  @keyframes rain-fall-far {
+    0%   { background-position: 0 0; }
+    100% { background-position: -30px 520px; }
   }
   .noir-rain {
     background-image:
-      repeating-linear-gradient(102deg,
-        transparent 0 22px,
-        rgba(247, 244, 236, 0.35) 22px 23px,
-        transparent 23px 60px),
-      repeating-linear-gradient(102deg,
-        transparent 0 38px,
-        rgba(247, 244, 236, 0.22) 38px 39px,
-        transparent 39px 110px),
-      repeating-linear-gradient(102deg,
-        transparent 0 70px,
-        rgba(247, 244, 236, 0.5) 70px 71px,
-        transparent 71px 150px);
-    background-size: 200px 220px, 320px 360px, 140px 180px;
-    animation: rain-fall 0.55s linear infinite;
+      repeating-linear-gradient(101deg,
+        transparent 0 84px,
+        rgba(247, 244, 236, 0.16) 84px 84.6px,
+        transparent 85px 130px),
+      repeating-linear-gradient(101deg,
+        transparent 0 150px,
+        rgba(247, 244, 236, 0.22) 150px 150.6px,
+        transparent 151px 230px);
+    background-size: 260px 300px, 200px 240px;
+    animation: rain-fall-near 0.7s linear infinite;
+    will-change: background-position;
+  }
+  .noir-rain-far {
+    background-image:
+      repeating-linear-gradient(101deg,
+        transparent 0 120px,
+        rgba(247, 244, 236, 0.08) 120px 120.5px,
+        transparent 121px 210px);
+    background-size: 340px 380px;
+    animation: rain-fall-far 1.6s linear infinite;
     will-change: background-position;
   }
 
+  /* drifting volumetric fog/haze behind everything for deep-city air */
+  @keyframes fog-drift {
+    0%   { transform: translateX(-3%) translateY(0); }
+    50%  { transform: translateX(3%) translateY(-1.5%); }
+    100% { transform: translateX(-3%) translateY(0); }
+  }
+  .noir-fog {
+    background:
+      radial-gradient(ellipse 70% 50% at 20% 70%, rgba(18, 20, 26, 0.55), transparent 60%),
+      radial-gradient(ellipse 80% 55% at 80% 65%, rgba(14, 15, 20, 0.5), transparent 62%),
+      radial-gradient(ellipse 120% 60% at 50% 100%, rgba(8, 9, 13, 0.7), transparent 70%);
+    animation: fog-drift 26s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* lightning — full-screen luminance spike. Driven by .is-flash toggle from JS.
+     Smooth ramp up / hold / fade; screen blend so cards catch the glint. */
+  @keyframes lightning-flash {
+    0%   { opacity: 0; }
+    18%  { opacity: 0.55; }   /* ramp up ~80ms */
+    28%  { opacity: 0.5; }    /* hold ~40ms */
+    40%  { opacity: 0.18; }   /* stutter dip */
+    52%  { opacity: 0.42; }   /* second flicker */
+    100% { opacity: 0; }      /* fade ~250ms */
+  }
+  .noir-lightning {
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 30%, rgba(214, 224, 240, 0.9), transparent 70%),
+      rgba(226, 232, 244, 0.5);
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .noir-lightning.is-flash {
+    animation: lightning-flash 0.55s ease-out;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .noir-grain, .noir-rain { animation: none; }
-    .noir-rain { opacity: 0.18; }
+    .noir-grain, .noir-rain, .noir-rain-far, .noir-fog { animation: none; }
+    .noir-rain, .noir-rain-far { opacity: 0.5; }
+    .noir-lightning { display: none; }
   }
 
   /* Terminal caret — crimson blink */
