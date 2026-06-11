@@ -177,7 +177,7 @@ export function IdeaScannerConsole({ onClose }: ConsoleProps) {
             </p>
             <button
               onClick={onClose}
-              className="mt-10 font-mono text-[11px] uppercase tracking-[0.25em] px-6 py-3 border border-bone/20 text-bone hover:border-gold hover:text-gold transition-colors"
+              className="mt-10 font-mono text-[11px] uppercase tracking-[0.25em] px-6 py-3 border border-bone/20 text-bone hover:border-crimson hover:text-crimson transition-colors"
             >
               RETURN TO GALLERY
             </button>

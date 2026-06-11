@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Italiana, Archivo_Black } from "next/font/google";
+import { Geist, Geist_Mono, Italiana, Archivo_Black, Oswald } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,6 +28,13 @@ const archivo = Archivo_Black({
   display: "swap",
 });
 
+const oswald = Oswald({
+  variable: "--font-oswald",
+  subsets: ["latin"],
+  weight: ["300", "500", "700"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Shade Works — You Think It. We Shade It Into Reality.",
   description:
@@ -50,7 +57,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${italiana.variable} ${archivo.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${italiana.variable} ${archivo.variable} ${oswald.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-ink text-bone">{children}</body>
     </html>

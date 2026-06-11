@@ -23,7 +23,7 @@ function PanelShell({
         <div className="w-full max-w-3xl relative">
           <button
             onClick={onClose}
-            className="absolute -top-12 right-0 font-mono text-[10px] uppercase tracking-[0.2em] text-bone-muted hover:text-gold transition-colors"
+            className="absolute -top-12 right-0 font-mono text-[10px] uppercase tracking-[0.2em] text-bone-muted hover:text-crimson transition-colors"
           >
             [ESC] CLOSE
           </button>
@@ -51,7 +51,7 @@ export function EnginePanel({ onClose }: { onClose: () => void }) {
   ];
   return (
     <PanelShell onClose={onClose}>
-      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-gold mb-6">
+      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-signal mb-6">
         THE ENGINE
       </p>
       <h2 className="font-display-black text-bone text-3xl md:text-5xl mb-8">
@@ -70,10 +70,11 @@ export function EnginePanel({ onClose }: { onClose: () => void }) {
             key={a.name}
             className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 border-t border-bone/10 py-6 last:border-b"
           >
-            <span className="font-mono text-[10px] text-bone-dim w-8">
+            <span className="font-mono text-[10px] text-crimson w-8">
               0{i + 1}
             </span>
             <span className="font-display-black text-bone text-lg md:w-64 shrink-0">
+              <span className="text-crimson mr-2">&#9656;</span>
               {a.name}
             </span>
             <span className="font-mono text-xs text-bone-muted leading-relaxed">
@@ -100,7 +101,7 @@ export function OperatorsPanel({
   ];
   return (
     <PanelShell onClose={onClose}>
-      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-gold mb-6">
+      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-signal mb-6">
         OPERATORS
       </p>
       <h2 className="font-display-black text-bone text-3xl md:text-5xl mb-8">
@@ -111,19 +112,38 @@ export function OperatorsPanel({
         we scale output. Every engagement is deliberate, every client is vetted,
         and every build is treated like a mission, not a project.
       </p>
-      <div className="space-y-px mb-12">
-        {steps.map((s) => (
-          <div
-            key={s.step}
-            className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 border-t border-bone/10 py-6 last:border-b"
-          >
-            <span className="font-mono text-[10px] text-gold w-20 shrink-0">{s.step}</span>
-            <span className="font-display-black text-bone text-lg md:w-72 shrink-0">
-              {s.title}
-            </span>
-            <span className="font-mono text-xs text-bone-muted">{s.desc}</span>
-          </div>
-        ))}
+      <div className="space-y-3 mb-12">
+        {steps.map((s, i) => {
+          const inverted = i % 2 === 1;
+          return (
+            <div
+              key={s.step}
+              className={`flex flex-col md:flex-row md:items-center gap-2 md:gap-8 p-6 border ${
+                inverted
+                  ? "bg-bone text-ink border-bone"
+                  : "bg-ink text-bone border-bone/15"
+              }`}
+            >
+              <span className="font-mono text-sm text-crimson font-bold w-20 shrink-0">
+                {s.step}
+              </span>
+              <span
+                className={`font-display-black text-lg md:w-72 shrink-0 ${
+                  inverted ? "text-ink" : "text-bone"
+                }`}
+              >
+                {s.title}
+              </span>
+              <span
+                className={`font-mono text-xs ${
+                  inverted ? "text-ink/70" : "text-bone-muted"
+                }`}
+              >
+                {s.desc}
+              </span>
+            </div>
+          );
+        })}
       </div>
       <button
         onClick={onExecuteDescent}

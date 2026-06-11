@@ -16,21 +16,25 @@
   --color-ink-surface: #1a1a1a;
   --color-ink-border: #2a2a2a;
 
-  --color-bone: #f2f2f2;
-  --color-bone-muted: #a8a8a8;
+  --color-bone: #f7f4ec;
+  --color-bone-muted: #b8b1a3;
   --color-bone-dim: #6e6e6e;
 
   --color-gold: #ffd400;
   --color-gold-light: #ffe05c;
   --color-gold-dark: #d9b200;
 
-  --color-crimson: #e5253d;
+  /* Noir accents — blood red (the "red dress") + signal yellow */
+  --color-crimson: #d11f2a;
+  --color-crimson-bright: #ff2b38;
+  --color-signal: #f2c200;
 
   /* Fonts (loaded in layout.tsx via next/font/google) */
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-display: var(--font-archivo), Impact, sans-serif;
-  --font-heading: var(--font-archivo), Impact, sans-serif;
+  --font-heading: var(--font-oswald), "Arial Narrow", sans-serif;
+  --font-condensed: var(--font-oswald), "Arial Narrow", sans-serif;
 
   /* shadcn passthroughs (kept so Card/Button/etc keep working) */
   --color-background: var(--background);
@@ -290,6 +294,79 @@
     text-transform: uppercase;
     letter-spacing: -0.01em;
     line-height: 0.95;
+  }
+
+  /* Oswald — condensed noir-poster sub-display + body. */
+  .font-condensed {
+    font-family: var(--font-oswald), "Arial Narrow", sans-serif;
+  }
+
+  /* ── NOIR ATMOSPHERE LAYERS ──────────────────────────────────── */
+  /* full-screen heavy vignette so the center pops (classic noir frame) */
+  .noir-vignette {
+    background:
+      radial-gradient(ellipse 120% 90% at 50% 45%,
+        transparent 38%,
+        rgba(0, 0, 0, 0.55) 78%,
+        rgba(0, 0, 0, 0.92) 100%);
+  }
+
+  /* radial comic halftone, faded at edges, sits behind UI / over scene */
+  .noir-halftone {
+    background-image: radial-gradient(circle, rgba(247, 244, 236, 0.10) 1px, transparent 1.4px);
+    background-size: 6px 6px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, #000 0%, transparent 72%);
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, #000 0%, transparent 72%);
+  }
+
+  /* projected-film grain — flicker via background-position jitter */
+  @keyframes grain-shift {
+    0%   { transform: translate(0, 0); }
+    10%  { transform: translate(-2%, -3%); }
+    20%  { transform: translate(-8%, 2%); }
+    30%  { transform: translate(3%, -10%); }
+    40%  { transform: translate(-3%, 8%); }
+    50%  { transform: translate(-8%, 3%); }
+    60%  { transform: translate(6%, 4%); }
+    70%  { transform: translate(-6%, 9%); }
+    80%  { transform: translate(2%, 12%); }
+    90%  { transform: translate(-8%, 1%); }
+    100% { transform: translate(6%, 0); }
+  }
+  .noir-grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.07;
+    animation: grain-shift 0.6s steps(2) infinite;
+    will-change: transform;
+  }
+
+  /* rain — single diagonal streak tile, scrolled vertically */
+  @keyframes rain-fall {
+    0%   { background-position: 0 0, 0 0, 0 0; }
+    100% { background-position: -120px 900px, -200px 1400px, -80px 700px; }
+  }
+  .noir-rain {
+    background-image:
+      repeating-linear-gradient(102deg,
+        transparent 0 22px,
+        rgba(247, 244, 236, 0.35) 22px 23px,
+        transparent 23px 60px),
+      repeating-linear-gradient(102deg,
+        transparent 0 38px,
+        rgba(247, 244, 236, 0.22) 38px 39px,
+        transparent 39px 110px),
+      repeating-linear-gradient(102deg,
+        transparent 0 70px,
+        rgba(247, 244, 236, 0.5) 70px 71px,
+        transparent 71px 150px);
+    background-size: 200px 220px, 320px 360px, 140px 180px;
+    animation: rain-fall 0.55s linear infinite;
+    will-change: background-position;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .noir-grain, .noir-rain { animation: none; }
+    .noir-rain { opacity: 0.18; }
   }
 
   /* Terminal caret — crimson blink */

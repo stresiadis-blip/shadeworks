@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import gsap from "gsap";
 import type { Project, ProjectCategory } from "@/data/projects";
-import { CATEGORY_SHORT, STATUS_COLOR } from "@/data/projects";
+import { CATEGORY_SHORT } from "@/data/projects";
 
 type SphereGalleryProps = {
   projects: Project[];
@@ -19,6 +19,44 @@ const CARD_H = 4.25;
 const LERP = 0.1;
 const MAX_LAT = THREE.MathUtils.degToRad(60);
 
+// ── noir palette (Sin City) ──────────────────────────────────────
+const NOIR = {
+  black: "#000000",
+  ink: "#0a0a0a",
+  ghost: "#1a1a1a", // watermark ghost number
+  bone: "#f7f4ec",
+  muted: "#b8b1a3",
+  red: "#d11f2a",
+  yellow: "#f2c200",
+};
+
+/** Comic halftone dot field in one corner of a card. */
+function halftoneCorner(
+  ctx: CanvasRenderingContext2D,
+  s: (n: number) => number,
+  W: number,
+  dark: boolean
+) {
+  ctx.save();
+  ctx.fillStyle = dark ? "rgba(0,0,0,0.18)" : "rgba(247,244,236,0.16)";
+  const step = s(11);
+  for (let gy = 0; gy < 7; gy++) {
+    for (let gx = 0; gx < 7; gx++) {
+      const r = s(3.2) * (1 - (gx + gy) / 16); // fade outward
+      if (r <= 0) continue;
+      ctx.beginPath();
+      ctx.arc(W - s(20) - gx * step, s(20) + gy * step, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+/**
+ * Noir card texture — high-contrast Sin City comic panel.
+ * Three variants: NEGATIVE (black/bone, most), INVERTED (bone/black, ~1 in 5),
+ * FEATURED (FerdiPoker — black with blood-red accents, the "red dress").
+ */
 function makeCardTexture(project: Project, isMobile: boolean): THREE.CanvasTexture {
   const scale = isMobile ? 0.5 : 1;
   const W = Math.round(512 * scale);
@@ -29,90 +67,113 @@ function makeCardTexture(project: Project, isMobile: boolean): THREE.CanvasTextu
   const ctx = canvas.getContext("2d")!;
   const s = (n: number) => n * scale;
 
-  // bg
-  ctx.fillStyle = "#101010";
+  const n = parseInt(project.id.slice(1), 10) || 0;
+  const featured = project.slug === "ferdipoker";
+  const inverted = !featured && n % 5 === 2; // p07, p12, p17, ...
+  // yellow tag on a sprinkle of (non-inverted, non-featured) cards — never with red
+  const yellowTag = !featured && !inverted && n % 4 === 0;
+
+  const bg = inverted ? NOIR.bone : NOIR.black;
+  const fg = inverted ? NOIR.black : NOIR.bone;
+  const sub = inverted ? "rgba(10,10,10,0.62)" : NOIR.muted;
+  const borderCol = inverted ? "rgba(0,0,0,0.85)" : "rgba(247,244,236,0.85)";
+  const accent = featured ? NOIR.red : fg;
+
+  // background — pure flat panel
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
-  // subtle vertical gradient
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, "rgba(255,255,255,0.04)");
-  grad.addColorStop(1, "rgba(0,0,0,0.25)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
 
-  // "image area" — abstract noir blocks unique per project
-  const seed = project.id.charCodeAt(1) * 7 + project.id.charCodeAt(2) * 13;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(s(24), s(24), W - s(48), s(330));
-  ctx.clip();
-  ctx.fillStyle = "#0a0a0a";
-  ctx.fillRect(s(24), s(24), W - s(48), s(330));
-  for (let i = 0; i < 6; i++) {
-    const v = ((seed * (i + 3)) % 97) / 97;
-    ctx.fillStyle = i % 3 === 0 ? "rgba(255,212,0,0.18)" : "rgba(242,242,242,0.05)";
-    ctx.save();
-    ctx.translate(s(60 + v * 380), s(80 + ((seed * (i + 1)) % 200) * scale));
-    ctx.rotate((v - 0.5) * 1.2);
-    ctx.fillRect(0, 0, s(40 + v * 160), s(8 + v * 26));
-    ctx.restore();
-  }
-  // big ghost index number
-  ctx.font = `${s(190)}px Arial Black, sans-serif`;
-  ctx.fillStyle = "rgba(242,242,242,0.07)";
-  ctx.fillText(project.id.slice(1), s(40), s(310));
-  ctx.restore();
-
-  // image area border
-  ctx.strokeStyle = "rgba(242,242,242,0.12)";
-  ctx.lineWidth = s(2);
-  ctx.strokeRect(s(24), s(24), W - s(48), s(330));
-
-  // status pill
-  const statusColor = STATUS_COLOR[project.status];
-  ctx.font = `${s(17)}px ui-monospace, monospace`;
-  const stW = ctx.measureText(project.status).width + s(28);
-  ctx.strokeStyle = statusColor;
-  ctx.lineWidth = s(1.5);
-  ctx.strokeRect(s(36), s(40), stW, s(34));
-  ctx.fillStyle = statusColor;
-  ctx.fillText(project.status, s(50), s(63));
-
-  // category pill (below image area)
-  const cat = CATEGORY_SHORT[project.category];
-  ctx.font = `${s(16)}px ui-monospace, monospace`;
-  const catW = ctx.measureText(cat).width + s(28);
-  ctx.fillStyle = "rgba(255,212,0,0.14)";
-  ctx.fillRect(s(24), s(382), catW, s(32));
-  ctx.fillStyle = "#ffd400";
-  ctx.fillText(cat, s(38), s(404));
-  // year — right aligned
-  ctx.fillStyle = "#6e6e6e";
+  // big ghost index watermark
+  ctx.font = `900 ${s(280)}px "Arial Black", Impact, sans-serif`;
+  ctx.fillStyle = inverted ? "rgba(0,0,0,0.06)" : "rgba(247,244,236,0.05)";
   ctx.textAlign = "right";
-  ctx.fillText(project.year, W - s(28), s(404));
+  ctx.fillText(project.id.slice(1), W - s(20), H - s(150));
   ctx.textAlign = "left";
 
-  // title
-  ctx.font = `${s(44)}px Arial Black, Arial, sans-serif`;
-  ctx.fillStyle = "#f2f2f2";
-  const title = project.title.toUpperCase();
-  if (ctx.measureText(title).width > W - s(56)) {
-    ctx.font = `${s(34)}px Arial Black, Arial, sans-serif`;
-  }
-  ctx.fillText(title, s(24), s(478), W - s(48));
+  // halftone corner (comic print)
+  halftoneCorner(ctx, s, W, inverted);
 
-  // description — wrapped, 2 lines max
-  ctx.font = `${s(18)}px ui-monospace, monospace`;
-  ctx.fillStyle = "#a8a8a8";
+  // ── category tag pill (top-left) ──
+  const cat = CATEGORY_SHORT[project.category];
+  ctx.font = `${s(17)}px ui-monospace, monospace`;
+  const catW = ctx.measureText(cat).width + s(26);
+  let tagBg: string | null = null;
+  let tagText = fg;
+  if (featured) {
+    tagBg = NOIR.red;
+    tagText = NOIR.bone;
+  } else if (yellowTag) {
+    tagBg = NOIR.yellow;
+    tagText = NOIR.black;
+  }
+  if (tagBg) {
+    ctx.fillStyle = tagBg;
+    ctx.fillRect(s(30), s(34), catW, s(34));
+    ctx.fillStyle = tagText;
+  } else {
+    ctx.strokeStyle = inverted ? "rgba(0,0,0,0.5)" : "rgba(247,244,236,0.45)";
+    ctx.lineWidth = s(1.5);
+    ctx.strokeRect(s(30), s(34), catW, s(34));
+    ctx.fillStyle = fg;
+  }
+  ctx.fillText(cat, s(43), s(57));
+
+  // ── status badge (top-right) ──
+  const status = project.status;
+  let stCol = inverted ? "rgba(0,0,0,0.55)" : "rgba(247,244,236,0.55)"; // CONCEPT
+  if (status === "IN PROGRESS") stCol = NOIR.yellow;
+  if (status === "LIVE") stCol = NOIR.red;
+  ctx.font = `${s(16)}px ui-monospace, monospace`;
+  const stW = ctx.measureText(status).width + s(24);
+  ctx.textAlign = "left";
+  if (status === "LIVE") {
+    ctx.fillStyle = NOIR.red;
+    ctx.fillRect(W - s(30) - stW, s(34), stW, s(34));
+    ctx.fillStyle = NOIR.bone;
+  } else {
+    ctx.strokeStyle = stCol;
+    ctx.lineWidth = s(1.5);
+    ctx.strokeRect(W - s(30) - stW, s(34), stW, s(34));
+    ctx.fillStyle = stCol;
+  }
+  ctx.fillText(status, W - s(30) - stW + s(12), s(57));
+
+  // ── title — heavy condensed display, large ──
+  ctx.fillStyle = fg;
+  const title = project.title.toUpperCase();
+  let titleSize = 58;
+  ctx.font = `900 ${s(titleSize)}px "Arial Black", Impact, sans-serif`;
+  while (ctx.measureText(title).width > W - s(56) && titleSize > 32) {
+    titleSize -= 3;
+    ctx.font = `900 ${s(titleSize)}px "Arial Black", Impact, sans-serif`;
+  }
+  const titleY = s(370);
+  ctx.fillText(title, s(28), titleY, W - s(56));
+
+  // title underline — blood red for featured, accent rule otherwise
+  ctx.fillStyle = featured ? NOIR.red : inverted ? NOIR.black : NOIR.bone;
+  ctx.fillRect(s(28), titleY + s(22), s(featured ? 130 : 64), s(featured ? 7 : 4));
+
+  // year — under the underline, right
+  ctx.font = `${s(16)}px ui-monospace, monospace`;
+  ctx.fillStyle = sub;
+  ctx.textAlign = "right";
+  ctx.fillText(project.year, W - s(28), s(366));
+  ctx.textAlign = "left";
+
+  // ── description — 2 lines max, readable ──
+  ctx.font = `${s(19)}px ui-monospace, monospace`;
+  ctx.fillStyle = sub;
   const words = project.description.toUpperCase().split(" ");
   let line = "";
-  let y = s(522);
+  let y = s(434);
   let lines = 0;
   for (const w of words) {
     const test = line ? line + " " + w : w;
     if (ctx.measureText(test).width > W - s(56) && line) {
-      ctx.fillText(line, s(24), y);
+      ctx.fillText(line, s(28), y);
       line = w;
-      y += s(26);
+      y += s(28);
       lines++;
       if (lines >= 2) {
         line = line + "…";
@@ -122,26 +183,27 @@ function makeCardTexture(project: Project, isMobile: boolean): THREE.CanvasTextu
       line = test;
     }
   }
-  if (lines < 3) ctx.fillText(line, s(24), y);
+  if (lines < 2) ctx.fillText(line, s(28), y);
 
-  // tags row
+  // ── tech tag pills (bottom) ──
   ctx.font = `${s(15)}px ui-monospace, monospace`;
-  let tx = s(24);
+  let tx = s(28);
   for (const tag of project.tags) {
     const t = tag.toUpperCase();
-    const tw = ctx.measureText(t).width + s(20);
-    ctx.strokeStyle = "rgba(242,242,242,0.2)";
+    const tw = ctx.measureText(t).width + s(22);
+    ctx.strokeStyle = inverted ? "rgba(0,0,0,0.35)" : "rgba(247,244,236,0.3)";
     ctx.lineWidth = s(1);
-    ctx.strokeRect(tx, s(584), tw, s(30));
-    ctx.fillStyle = "#6e6e6e";
-    ctx.fillText(t, tx + s(10), s(605));
+    ctx.strokeRect(tx, s(566), tw, s(34));
+    ctx.fillStyle = inverted ? "rgba(10,10,10,0.7)" : NOIR.muted;
+    ctx.fillText(t, tx + s(11), s(588));
     tx += tw + s(10);
   }
 
-  // outer border
-  ctx.strokeStyle = "rgba(255,212,0,0.25)";
-  ctx.lineWidth = s(2);
-  ctx.strokeRect(s(1), s(1), W - s(2), H - s(2));
+  // ── outer border (1px feel) ──
+  ctx.strokeStyle = featured ? NOIR.red : borderCol;
+  ctx.lineWidth = s(featured ? 3 : 2);
+  ctx.strokeRect(s(2), s(2), W - s(4), H - s(4));
+  void accent;
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -520,8 +582,8 @@ export function SphereGallery({
 
     const isMobile = window.innerWidth < 768;
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#0a0a0a");
-    scene.fog = new THREE.Fog("#0a0a0a", RADIUS * 0.9, RADIUS * 2.6);
+    scene.background = new THREE.Color("#000000");
+    scene.fog = new THREE.Fog("#000000", RADIUS * 0.9, RADIUS * 2.6);
 
     const camera = new THREE.PerspectiveCamera(
       isMobile ? 90 : 80,

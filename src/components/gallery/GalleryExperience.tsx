@@ -10,6 +10,7 @@ import { SphereGallery } from "./SphereGallery";
 import { ListView } from "./ListView";
 import { IdeaScannerConsole } from "./IdeaScannerConsole";
 import { EnginePanel, OperatorsPanel } from "./OverlayPanels";
+import { AtmosphereLayers } from "./AtmosphereLayers";
 
 type View = "sphere" | "list";
 type Panel = "none" | "engine" | "operators" | "console";
@@ -76,6 +77,9 @@ export function GalleryExperience() {
         <ListView projects={PROJECTS} activeCategory={category} />
       )}
 
+      {/* noir atmosphere — rain, grain, halftone, vignette (in front of sphere, behind chrome) */}
+      {!reducedMotion && <AtmosphereLayers />}
+
       {/* hero overlay */}
       <div
         className={`pointer-events-none fixed inset-0 z-20 flex flex-col items-center justify-center px-6 text-center transition-opacity duration-1000 ${
@@ -93,7 +97,7 @@ export function GalleryExperience() {
           shortcuts. Just raw execution at machine speed.
         </p>
         {!reducedMotion && (
-          <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-gold mt-12 animate-pulse">
+          <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-signal mt-12 animate-pulse">
             drag to explore
           </p>
         )}
@@ -105,7 +109,7 @@ export function GalleryExperience() {
         <Link
           href="/"
           data-chrome
-          className="pointer-events-auto absolute top-6 left-6 font-logo text-2xl text-bone hover:text-gold transition-colors"
+          className="pointer-events-auto absolute top-6 left-6 font-logo text-2xl text-bone mix-blend-difference hover:opacity-80 transition-opacity"
         >
           shadeworks
         </Link>
@@ -118,9 +122,9 @@ export function GalleryExperience() {
           <button
             onClick={() => setFilterOpen((v) => !v)}
             className={`font-mono text-[10px] uppercase tracking-[0.3em] px-6 py-2.5 rounded-full border transition-colors ${
-              category !== "all"
-                ? "border-gold text-gold"
-                : "border-bone/20 text-bone hover:border-bone/50"
+              filterOpen || category !== "all"
+                ? "border-crimson text-bone"
+                : "border-bone/30 text-bone hover:border-bone/60"
             }`}
           >
             FILTER{category !== "all" ? ` · ${CATEGORY_SHORT[category]}` : ""}
@@ -136,7 +140,7 @@ export function GalleryExperience() {
                   }}
                   className={`font-mono text-[10px] uppercase tracking-[0.2em] px-4 py-2 text-left rounded transition-colors ${
                     category === c
-                      ? "text-gold bg-gold/10"
+                      ? "text-bone bg-crimson/20 border-l-2 border-crimson"
                       : "text-bone-muted hover:text-bone hover:bg-bone/5"
                   }`}
                 >
@@ -151,7 +155,7 @@ export function GalleryExperience() {
         <button
           data-chrome
           onClick={() => setPanel("console")}
-          className="pointer-events-auto absolute top-6 right-6 font-mono text-[10px] uppercase tracking-[0.3em] px-6 py-2.5 rounded-full bg-crimson text-bone hover:bg-crimson/85 transition-colors"
+          className="pointer-events-auto absolute top-6 right-6 font-mono text-[10px] uppercase tracking-[0.3em] px-6 py-2.5 rounded-full bg-crimson text-bone hover:bg-crimson-bright hover:-translate-y-0.5 transition-all"
         >
           EXECUTE DESCENT
         </button>
@@ -166,14 +170,14 @@ export function GalleryExperience() {
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`font-mono text-[10px] uppercase tracking-[0.25em] px-3 py-2 border transition-colors ${
+                className={`font-mono text-[10px] uppercase tracking-[0.25em] px-2 py-2 border-l-2 transition-colors ${
                   view === v
-                    ? "border-gold/60 text-gold"
+                    ? "border-signal text-bone"
                     : "border-transparent text-bone-dim hover:text-bone"
                 }`}
                 style={{ writingMode: "vertical-rl" }}
               >
-                {v === "sphere" ? "SPHERE" : "INDEX"}
+                {view === v ? "▸ " : ""}{v === "sphere" ? "SPHERE" : "INDEX"}
               </button>
             ))}
           </div>
@@ -207,10 +211,10 @@ export function GalleryExperience() {
                 setPanel(p);
                 if (p === "none") setView("sphere");
               }}
-              className={`font-mono text-[10px] uppercase tracking-[0.25em] px-5 py-2.5 rounded-full transition-colors ${
+              className={`font-mono text-[10px] uppercase tracking-[0.25em] px-5 py-2.5 rounded-full transition-colors border-b-2 ${
                 panel === p && p !== "none"
-                  ? "text-gold bg-gold/10"
-                  : "text-bone-muted hover:text-bone"
+                  ? "text-bone border-crimson"
+                  : "text-bone-muted border-transparent hover:text-bone"
               }`}
             >
               {label}
@@ -242,14 +246,24 @@ function ReducedMotionGrid({ category }: { category: ProjectCategory | "all" }) 
           <Link
             key={p.id}
             href={`/work/${p.slug}`}
-            className="border border-bone/10 bg-ink-elevated p-6 hover:border-gold/40 transition-colors"
+            className="border border-bone/10 bg-ink-elevated p-6 hover:border-crimson transition-colors"
           >
             <div className="flex items-center justify-between mb-6">
               <span
                 className="font-mono text-[10px] tracking-wider border px-2 py-1"
                 style={{
-                  color: p.status === "LIVE" ? "#ffd400" : "#6e6e6e",
-                  borderColor: p.status === "LIVE" ? "#ffd400" : "#6e6e6e55",
+                  color:
+                    p.status === "LIVE"
+                      ? "#d11f2a"
+                      : p.status === "IN PROGRESS"
+                        ? "#f2c200"
+                        : "#6e6e6e",
+                  borderColor:
+                    p.status === "LIVE"
+                      ? "#d11f2a"
+                      : p.status === "IN PROGRESS"
+                        ? "#f2c200"
+                        : "#6e6e6e55",
                 }}
               >
                 {p.status}
@@ -257,7 +271,7 @@ function ReducedMotionGrid({ category }: { category: ProjectCategory | "all" }) 
               <span className="font-mono text-[10px] text-bone-dim">{p.year}</span>
             </div>
             <h2 className="font-display-black text-bone text-xl mb-2">{p.title}</h2>
-            <p className="font-mono text-[10px] uppercase tracking-wider text-gold/80 mb-3">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-bone-muted mb-3">
               {CATEGORY_SHORT[p.category]}
             </p>
             <p className="font-mono text-[11px] text-bone-muted leading-relaxed">

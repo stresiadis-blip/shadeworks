@@ -30,10 +30,10 @@ export function ListView({
                 <span className="font-mono text-[10px] text-bone-dim w-8 shrink-0">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="font-display-black text-bone text-xl md:text-2xl md:w-72 shrink-0 group-hover:text-gold transition-colors">
+                <span className="font-display-black text-bone text-xl md:text-2xl md:w-72 shrink-0 group-hover:text-crimson transition-colors">
                   {p.title}
                 </span>
-                <span className="font-mono text-[10px] uppercase tracking-wider text-gold/80 md:w-40 shrink-0">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-bone-muted md:w-40 shrink-0">
                   {CATEGORY_SHORT[p.category]}
                 </span>
                 <span className="font-mono text-[10px] text-bone-dim md:w-24 shrink-0">
