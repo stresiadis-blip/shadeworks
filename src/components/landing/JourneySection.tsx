@@ -261,6 +261,9 @@ function drawCameraA(
   const bend = smoothstep(BEAT1_END, BEAT3_END, progress); // road bends right
   const rainAmount = 1 - smoothstep(0.18, 0.85, progress); // heavy -> zero
   const wetness = smoothstep(0.5, 1.0, progress); // reflections grow
+  // 0 = down-the-road, 1 = full side. D2a uses it ONLY for a global lateral
+  // slide (incipient Vectr pan); the isometric rotation lands in D2b.
+  const cameraAngle = smoothstep(0.4, 0.9, progress);
 
   const skyTop = mix(mix(SKY_NOIR_TOP, SKY_DUSK_TOP, duskF), SKY_DAWN_TOP, dawnF);
   const skyBot = mix(mix(SKY_NOIR_BOT, SKY_DUSK_BOT, duskF), SKY_DAWN_BOT, dawnF);
@@ -282,15 +285,20 @@ function drawCameraA(
   const yNorm = (d: number): number => (depthScale(d) - sFar) / (1 - sFar);
   const groundY = (d: number): number =>
     horizonY + (bottomY - horizonY) * yNorm(d) + camY;
-  // Road centreline: a gentle wind that resolves into a RIGHTWARD bend in the
-  // later beats (the path curving toward the cul-de-sac). The bend is stronger
-  // farther down the road (d^2) and damps the original symmetric sine.
-  const centerX = (d: number): number =>
-    width * 0.5 +
-    Math.sin(d * Math.PI * 1.6) * width * 0.11 * (1 - d) * (1 - bend * 0.75) +
-    bend * width * 0.34 * (d * d);
+  // Road centreline: a double-S serpentine — a right bend near the camera that
+  // resolves into a left bend, the lateral amplitude fading to 0 at the horizon
+  // so the road converges on the vanishing point (C-infinity, no hard edges).
+  // sin(2*pi*d) is one full wave over the road = right-then-left; the existing
+  // `bend` factor deepens the S as the scroll advances.
+  const centerX = (d: number): number => {
+    const amp = width * 0.24 * (0.6 + bend * 0.4);
+    return width * 0.5 + Math.sin(d * Math.PI * 2) * amp * (1 - d);
+  };
+  // ground() also applies a global leftward slide driven by cameraAngle, so the
+  // whole city+road pans left on scroll (a Vectr-style camera move; projection
+  // angle itself is untouched here).
   const ground = (d: number, v: number): [number, number] => [
-    centerX(d) + v * lanePx * depthScale(d),
+    centerX(d) + v * lanePx * depthScale(d) - cameraAngle * width * 0.22,
     groundY(d),
   ];
 
