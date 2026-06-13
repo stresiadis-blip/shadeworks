@@ -2,6 +2,8 @@
 Last updated: 2026-06-13 | Status: IN DEVELOPMENT
 Pagina de prezentare a studioului Shade Works (viitor PFA Adrian Cata, Constanta). Vitrina: "ce suntem capabili sa facem". Studio generalist — NU nisat pe maritim (maritimul tine de un eventual produs separat, nu de site).
 
+> **PIVOT ACTIV (branch `feature/vectr-model`, 3/9 commits, NEmerged):** landing-ul se muta pe model editorial Vectr (hero pinned + sectiuni scroll), iar sfera 3D pleaca pe `/work`. Sectiunea "CONCEPT REAL" de mai jos descrie inca PRODUCTIA (main, sfera-as-homepage) — valida pana la merge. Detalii + ce a ramas: `_prompts/vectr-model-progress.md`. Arhiva sfera-as-hero: branch `sphere-gallery-archive`.
+
 > **Reguli de convorbire + protocoale cross-proiect: `C:\Users\stres\jarvis\Claude\_RULES.md`** (sursa de adevar). Rezumat aplicabil mai jos.
 
 ## MOD DE LUCRU CU ADRIAN (sistem cross-proiect — aplica de la primul raspuns)
