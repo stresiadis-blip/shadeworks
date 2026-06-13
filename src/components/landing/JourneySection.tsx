@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { IdeaScannerConsole } from "@/components/gallery/IdeaScannerConsole";
+import { HERO_TITLE_LINES, STORY_EYEBROW, STORY_BRIDGE } from "@/data/studio";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -374,18 +376,22 @@ function draw(
 }
 
 /**
- * COMMIT A scaffold — a tall pinned scroll container whose sticky full-viewport
- * canvas is driven by a single scroll progress value (0->1). This commit proves
- * the scroll -> canvas pipeline only: no city art, no color arc yet.
+ * The landing journey — a tall pinned scroll container whose full-viewport
+ * canvas is driven by a single scroll progress value (0->1), with a text
+ * overlay layered above it. The page opens directly on this noir city scene.
  *
  * All motion lives inside matchMedia("(prefers-reduced-motion: no-preference)").
  * Under reduced motion the section collapses to one viewport, the canvas paints
  * a single static frame at progress 0, and nothing pins or scrubs.
+ *
+ * C1 renders ONLY the chapter-1 copy, static (no scroll-driven swapping yet —
+ * that lands in C2). Copy is byte-for-byte from studio.ts.
  */
 export function JourneySection() {
   const sectionRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [consoleOpen, setConsoleOpen] = useState(false);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -473,9 +479,49 @@ export function JourneySection() {
 
   return (
     <section ref={sectionRef} className="relative bg-ink">
-      <div ref={pinRef} className="h-[100svh] w-full overflow-hidden">
+      <div ref={pinRef} className="relative h-[100svh] w-full overflow-hidden">
         <canvas ref={canvasRef} className="block h-full w-full" />
+
+        {/* text overlay — chapter 1 (static for C1). pointer-events-none so the
+            page still scrolls/clicks through; only the CTA is interactive. The
+            canvas already carries its own vignette, so we add NO grain/vignette
+            here (that produced the shadow artifact) — just a soft legibility
+            scrim behind the centred copy. */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 60% 50% at 50% 45%, rgba(10,10,10,0.6), transparent 70%)",
+            }}
+          />
+          <div className="relative mx-auto max-w-5xl">
+            <p className="mb-8 font-mono text-[10px] uppercase tracking-[0.4em] text-signal">
+              {STORY_EYEBROW}
+            </p>
+            <h1 className="font-display-black text-4xl leading-[0.92] text-bone md:text-7xl lg:text-8xl">
+              {HERO_TITLE_LINES.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </h1>
+            <p className="mx-auto mt-10 max-w-xl font-mono text-xs leading-relaxed tracking-wide text-bone-muted md:text-sm">
+              {STORY_BRIDGE}
+            </p>
+            <button
+              type="button"
+              onClick={() => setConsoleOpen(true)}
+              className="pointer-events-auto mt-12 bg-crimson px-10 py-5 font-mono text-xs uppercase tracking-[0.3em] text-bone transition-all hover:-translate-y-0.5 hover:bg-crimson-bright"
+            >
+              EXECUTE DESCENT
+            </button>
+          </div>
+        </div>
       </div>
+
+      {consoleOpen && <IdeaScannerConsole onClose={() => setConsoleOpen(false)} />}
     </section>
   );
 }
