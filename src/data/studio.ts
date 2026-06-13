@@ -1,50 +1,55 @@
 /**
- * Studio copy — single source of truth for text that appears in MORE than one
- * place (the gallery overlay panels AND the scroll story). Keeping it here
- * guarantees the panel and the story can never drift apart.
+ * Studio copy — single source of truth for the landing journey's narration.
  *
- * The 5-act landing story is written as a late-night radio ad that finds a
- * tired driver on his way home: it names his exhaustion, then sells him a way
- * out — systems, scale, an easier life — until the sun finally rises on his
- * street. Cinematic noir voice, second person, it speaks directly to YOU.
+ * This is the VOICE-OVER of a noir short film. A tired man drives home through
+ * the rain after a long trip, his head full of unfinished ideas. A voice finds
+ * him — calm, knowing, a little dangerous — and walks him from the dark toward
+ * sunrise on his own street. The voice IS ShadeWorks, but it never pitches; it
+ * narrates. Each MOMENT below is one beat of that voice-over, layered over the
+ * matching frame of the scroll journey.
+ *
+ * HEADLINE = the line that lands hardest in the beat (display type).
+ * BODY = the rest of the narration, written as it would be heard (mono, typed
+ * out line by line like a subtitle). EYEBROW = a quiet scene label.
+ *
  * The page that renders these may change; the words may not.
  */
 import type { ProjectCategory } from "@/data/projects";
 
-// ── ACT 1 — THE DRIVE HOME (hero / opener) ───────────────────────────────────
-// Night, rain, the long road back from another exhausting trip. Ideas you
-// can't finish sit heavy in the passenger seat. Then the radio finds you.
-export const HERO_TITLE_LINES = ["LONG DAY.", "LONGER ROAD HOME."] as const;
+// ── MOMENT 1 — THE EMPTY ROAD (deep noir, rain, car far) ─────────────────────
+// Low, intimate, like a voice appearing from nowhere.
+export const HERO_TITLE_LINES = ["THE ROAD IS EMPTY.", "YOUR HEAD ISN'T."] as const;
 
-export const STORY_EYEBROW = "ON THE ROAD // LATE";
+export const STORY_EYEBROW = "// LATE. RAINING.";
 
 export const STORY_BRIDGE =
-  "Another trip done. The rain won't quit, the wipers keep time, and your head " +
-  "is full of ideas you never have time to finish. Then the radio cuts " +
-  "through the dark — and for once, it's talking to you.";
+  "You know that feeling. The road is empty, but your head isn't. Every mile " +
+  "carries another idea you never had time to build, another note scribbled " +
+  "somewhere, another promise made to yourself and left waiting. You've been " +
+  "carrying the whole thing alone for so long, it started to feel normal. The " +
+  "rain doesn't ask where you're going. It just keeps falling.";
 
-// ── ACT 2 — THE STUDIO ON THE RADIO ──────────────────────────────────────────
-// The ad introduces itself. Calm, sure of itself. We build the systems you
-// keep meaning to build but never get to.
-export const MANIFEST_EYEBROW = "// THE VOICE ON THE RADIO";
-export const MANIFEST_HEADLINE = "YOU RUN IT ALL ALONE. YOU DON'T HAVE TO.";
+// ── MOMENT 2 — THE FIRST LIGHTS (city wakes, car mid-road) ───────────────────
+// Reflective, slower, a pause between thoughts.
+export const MANIFEST_EYEBROW = "// ONE LIGHT, THEN ANOTHER";
+export const MANIFEST_HEADLINE = "A SINGLE IDEA, REFUSING TO STAY IN THE DARK.";
 export const MANIFEST_BODY =
-  "This is ShadeWorks. We build the software, the control panels, and the " +
-  "systems that carry the weight you've been carrying by hand. Custom-built " +
-  "around your business — not templates, not theory. The stuff you keep " +
-  "promising yourself you'll set up one day. We set it up.";
+  "Funny thing about a city. From a distance it looks asleep. Then one light " +
+  "comes on. Then another. Then another. That's how most things begin. Not " +
+  "with a miracle. Not with a grand plan. Just a single idea refusing to stay " +
+  "in the dark. You've got a few of those riding with you tonight.";
 
-// ── ACT 3 — HOW IT WORKS (the engine) ─────────────────────────────────────────
-// The ad explains the magic: a team that works together, around the clock,
-// so the work that buries you gets done while you sleep.
-export const ENGINE_EYEBROW = "// HOW WE WORK";
-export const ENGINE_HEADLINE = "A TEAM THAT NEVER SLEEPS, WORKING AS ONE.";
+// ── MOMENT 3 — THE MACHINE (high-angle, light-arteries, the engine) ──────────
+// Growing momentum, confidence without arrogance.
+export const ENGINE_EYEBROW = "// LOOK CLOSER";
+export const ENGINE_HEADLINE = "THEY JUST STOP DOING EVERYTHING THEMSELVES.";
 export const ENGINE_BODY =
-  "Behind ShadeWorks is a coordinated crew of specialist AI operators — one " +
-  "designs it, one builds it, one ships it. They hand the work to each other " +
-  "without pause, covering for each other, moving while the city sleeps. What " +
-  "buries an agency for six months lands in six weeks. What costs you every " +
-  "evening gets done before morning.";
+  "See those lights moving through the streets? That's work finding its " +
+  "place. One thing speaking to another. One piece carrying the weight of the " +
+  "next. The people who get ahead aren't stronger than you. They just stop " +
+  "doing everything themselves. While they sleep, something keeps working — " +
+  "drawing the plans, laying the foundations, building the machine that keeps " +
+  "moving long after the lights go out.";
 
 export const ENGINE_AGENTS = [
   {
@@ -61,27 +66,28 @@ export const ENGINE_AGENTS = [
   },
 ] as const;
 
-// ── ACT 4 — THE PROOF (the sky changes color) ─────────────────────────────────
-// You almost don't believe it. So the ad gives you proof — something real,
-// already built, already running. The moment doubt starts to lift.
-export const PROOF_EYEBROW = "// PROOF, NOT PROMISES";
-export const PROOF_HEADLINE = "WE'VE DONE IT BEFORE. HERE'S THE RECEIPT.";
+// ── MOMENT 4 — THE HORIZON CHANGES (dawn breaks, the proof) ──────────────────
+// Revelation, the city opening up around the words.
+export const PROOF_EYEBROW = "// THE HORIZON CHANGES";
+export const PROOF_HEADLINE = "IMPOSSIBLE IN THE DARK. INEVITABLE IN THE LIGHT.";
 export const PROOF_BODY =
-  "Talk is cheap; shipping leaves a mark. FerdiPoker started as one person's " +
-  "idea and became a real platform people train on every day. That's the " +
-  "moment the sky starts to change color — when an idea you carried alone " +
-  "turns into something that runs without you.";
+  "The horizon always changes before you notice it. Somewhere out there, an " +
+  "idea became a real thing — a platform called FerdiPoker. Once it lived in " +
+  "someone's head the same way your ideas live in yours now. Then the work " +
+  "began. What looked impossible in the dark became inevitable in the light. " +
+  "Months folded into weeks. Thoughts became systems. Systems became " +
+  "something people could actually touch.";
 
-// ── ACT 5 — SUNRISE ON YOUR STREET (operators + CTA) ──────────────────────────
-// You pull into your street. The sun comes up. The ad makes its offer: bring
-// us what you've been carrying, and we'll show you how far it can go.
-export const OPERATOR_EYEBROW = "// PULLING INTO YOUR STREET";
-export const OPERATOR_HEADLINE = "BRING THE IDEA. WE'LL MAKE THE SUN RISE.";
+// ── MOMENT 5 — SUNRISE ON YOUR STREET (arrival home, the offer) ──────────────
+// Warm, reassuring, a final pause before silence.
+export const OPERATOR_EYEBROW = "// HOME";
+export const OPERATOR_HEADLINE = "LET THE SUN TAKE IT FROM HERE.";
 export const OPERATOR_BODY =
-  "We keep the studio small on purpose, so every build gets our full weight. " +
-  "Every client is chosen, every project treated like it matters — because to " +
-  "you, it does. You've carried it far enough alone. Pull in, hand it over, " +
-  "and watch the morning break over your street.";
+  "Maybe the burden was never the dream. Maybe it was believing you had to " +
+  "carry every piece of it yourself. There are people who build roads where " +
+  "others see distance — people who stay awake so the work keeps moving while " +
+  "you finally get some rest. So bring the weight with you. The night has done " +
+  "its job. Let the sun take it from here.";
 
 export const OPERATOR_STEPS = [
   { step: "STEP 01", title: "TELL US THE IDEA", desc: "The one you keep meaning to build. Raw, unfiltered, ambitious." },
@@ -106,6 +112,6 @@ export const CATEGORY_BLURBS: { category: ProjectCategory; blurb: string }[] = [
 ];
 
 // ── CTA ───────────────────────────────────────────────────────────────────────
-export const CTA_EYEBROW = "// PULL IN";
-export const CTA_HEADLINE = "BRING THE IDEA.";
-export const CTA_HEADLINE_2 = "WE'LL MAKE THE SUN RISE.";
+export const CTA_EYEBROW = "// BRING THE WEIGHT";
+export const CTA_HEADLINE = "BRING THE WEIGHT.";
+export const CTA_HEADLINE_2 = "LET THE SUN TAKE IT FROM HERE.";

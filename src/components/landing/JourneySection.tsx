@@ -1018,7 +1018,7 @@ export function JourneySection() {
               style={{ pointerEvents: op1 > 0.5 ? "auto" : "none" }}
               className={CTA_CLS}
             >
-              EXECUTE DESCENT
+              BRING THE WEIGHT
             </button>
           </Chapter>
 
@@ -1070,7 +1070,7 @@ export function JourneySection() {
               style={{ pointerEvents: op5 > 0.5 ? "auto" : "none" }}
               className={CTA_CLS}
             >
-              EXECUTE DESCENT
+              BRING THE WEIGHT
             </button>
           </Chapter>
         </div>
