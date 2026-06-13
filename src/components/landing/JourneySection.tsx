@@ -23,13 +23,64 @@ import {
 
 gsap.registerPlugin(ScrollTrigger);
 
-/** Noir palette mirrored from globals.css — canvas needs raw hex, not tokens. */
-const INK = "#0a0a0a";
-
 /** Linear interpolation helper. */
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
+
+// ---------------------------------------------------------------------------
+// Colour-arc machinery. The whole scene transitions noir -> full colour across
+// scroll progress in 4 beats. Each element's tint is an independent factor
+// (smoothstep ramp) so colour "bleeds" in gradually, never hard-switches.
+// ---------------------------------------------------------------------------
+
+/** Beat boundaries (progress). Tunable. */
+const BEAT1_END = 0.25; // ARRIVAL (full noir) ends
+const BEAT2_END = 0.55; // LEAVING THE CITY (road colours) ends
+const BEAT3_END = 0.8; // CUL-DE-SAC APPROACH (everything colours) ends
+// BEAT 4 (BEAT3_END..1.0) = HOME, full colour.
+
+type RGB = [number, number, number];
+
+/** Hermite smoothstep, self-clamped to [0,1]. */
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  let t = (x - edge0) / (edge1 - edge0);
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return t * t * (3 - 2 * t);
+}
+
+const mix = (a: RGB, b: RGB, t: number): RGB => [
+  a[0] + (b[0] - a[0]) * t,
+  a[1] + (b[1] - a[1]) * t,
+  a[2] + (b[2] - a[2]) * t,
+];
+const rgbStr = (c: RGB): string =>
+  `rgb(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])})`;
+const rgbaStr = (c: RGB, a: number): string =>
+  `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${a})`;
+
+// Brand + neon palette.
+const C_BONE: RGB = [247, 244, 236];
+const C_GOLD: RGB = [255, 212, 0]; // car signature + warm accents
+const C_CYAN: RGB = [0, 229, 255];
+const C_MAGENTA: RGB = [255, 46, 196];
+const C_AMBER: RGB = [255, 196, 120];
+const C_INK: RGB = [10, 10, 10];
+const NEON: RGB[] = [
+  [0, 229, 255], // cyan
+  [255, 46, 196], // magenta
+  [160, 90, 255], // purple
+  [60, 255, 160], // green
+  [255, 212, 0], // gold
+];
+
+// Sky keyframes: noir night -> deep dusk blue -> warm dawn.
+const SKY_NOIR_TOP: RGB = [5, 5, 8];
+const SKY_NOIR_BOT: RGB = [10, 10, 10];
+const SKY_DUSK_TOP: RGB = [8, 12, 34];
+const SKY_DUSK_BOT: RGB = [26, 24, 50];
+const SKY_DAWN_TOP: RGB = [62, 76, 128];
+const SKY_DAWN_BOT: RGB = [226, 150, 98];
 
 // ---------------------------------------------------------------------------
 // Deterministic world data — built ONCE at module load so every frame renders
@@ -52,12 +103,21 @@ function mulberry32(seed: number): () => number {
 
 const ROAD_HALF = 3.4; // half road width, in lane units (wide, cinematic street)
 
+/** A window on a building's lit (right) face, in face-local coords (0..1). */
+interface Win {
+  u: number; // along the base edge
+  w: number; // up the height
+}
+
 interface Building {
   d: number; // depth along the road, 0 = foreground/near, 1 = horizon/far
   v: number; // signed lateral offset (lane units); |v| > ROAD_HALF
   footW: number; // footprint diameter (lane units)
   h: number; // height (lane units)
   tone: number; // base grey value (near-black -> dark grey)
+  neon: number; // index into NEON — this building's window colour
+  litOffset: number; // 0..1 scatter so windows light at different scroll points
+  windows: Win[]; // deterministic window positions on the lit face
 }
 
 /** Procedural city flanking the road on both sides, near -> far. */
@@ -71,18 +131,35 @@ function buildCity(): Building[] {
       const lots = 1 + (rng() < 0.55 ? 1 : 0);
       for (let j = 0; j < lots; j++) {
         if (rng() < 0.12) continue; // scattered empty lots
+        const winCount = 2 + Math.floor(rng() * 3);
+        const windows: Win[] = [];
+        for (let k = 0; k < winCount; k++) {
+          windows.push({ u: 0.2 + rng() * 0.6, w: 0.15 + rng() * 0.65 });
+        }
         list.push({
           d: rowD + rng() * 0.02,
           v: side * (ROAD_HALF + 0.5 + j * 1.15 + rng() * 0.5),
           footW: 0.55 + rng() * 0.45,
           h: 1.3 + rng() * 5,
           tone: 14 + Math.round(rng() * 26),
+          neon: Math.floor(rng() * NEON.length),
+          litOffset: rng(),
+          windows,
         });
       }
     }
   }
   return list;
 }
+
+/** Fixed window grid for the destination "home" at the end of the bend. */
+const HOME_WINDOWS: Win[] = [
+  { u: 0.3, w: 0.28 },
+  { u: 0.55, w: 0.28 },
+  { u: 0.3, w: 0.56 },
+  { u: 0.55, w: 0.56 },
+  { u: 0.42, w: 0.82 },
+];
 
 interface Tower {
   x: number; // 0..1 fraction of width
@@ -143,6 +220,26 @@ function draw(
   width: number,
   height: number,
 ): void {
+  // --- colour-arc factors (all driven by the shared scroll progress) -------
+  const roadColor = smoothstep(BEAT1_END, BEAT2_END, progress); // road first
+  const carColor = smoothstep(0.48, 0.7, progress); // car tints late beat 2->3
+  const cityColor = smoothstep(BEAT2_END, BEAT3_END, progress); // windows light
+  const duskF = smoothstep(0.45, 0.8, progress); // sky -> dusk blue
+  const dawnF = smoothstep(0.8, 1.0, progress); // sky -> warm dawn
+  const approach = smoothstep(0.55, 0.85, progress); // cul-de-sac grows
+  const homeAppear = smoothstep(0.55, 0.92, progress); // home lights up
+  const bend = smoothstep(BEAT1_END, BEAT3_END, progress); // road bends right
+  const rainAmount = 1 - smoothstep(0.18, 0.85, progress); // heavy -> zero
+  const wetness = smoothstep(0.5, 1.0, progress); // reflections grow
+
+  const skyTop = mix(mix(SKY_NOIR_TOP, SKY_DUSK_TOP, duskF), SKY_DAWN_TOP, dawnF);
+  const skyBot = mix(mix(SKY_NOIR_BOT, SKY_DUSK_BOT, duskF), SKY_DAWN_BOT, dawnF);
+  const asphalt = mix(
+    mix([22, 23, 26], [30, 27, 34], roadColor),
+    [46, 38, 40],
+    dawnF * 0.6,
+  );
+
   // --- frame + projection setup -------------------------------------------
   const horizonY = height * 0.26;
   const bottomY = height * 1.04; // road mouth sits just off the bottom edge
@@ -155,9 +252,13 @@ function draw(
   const yNorm = (d: number): number => (depthScale(d) - sFar) / (1 - sFar);
   const groundY = (d: number): number =>
     horizonY + (bottomY - horizonY) * yNorm(d) + camY;
-  // Road centreline winds, then converges to the vanishing point at horizon.
+  // Road centreline: a gentle wind that resolves into a RIGHTWARD bend in the
+  // later beats (the path curving toward the cul-de-sac). The bend is stronger
+  // farther down the road (d^2) and damps the original symmetric sine.
   const centerX = (d: number): number =>
-    width * 0.5 + Math.sin(d * Math.PI * 1.6) * width * 0.13 * (1 - d);
+    width * 0.5 +
+    Math.sin(d * Math.PI * 1.6) * width * 0.11 * (1 - d) * (1 - bend * 0.75) +
+    bend * width * 0.34 * (d * d);
   const ground = (d: number, v: number): [number, number] => [
     centerX(d) + v * lanePx * depthScale(d),
     groundY(d),
@@ -185,6 +286,7 @@ function draw(
 
   // One tilted-isometric extruded box at (d, v): 2:1 diamond base + two visible
   // side faces + top, depth-scaled. fill(faceMul) tones the three faces.
+  // Optional lit windows (winColor rgba) are painted on the right face.
   const drawIsoBox = (
     d: number,
     v: number,
@@ -192,6 +294,8 @@ function draw(
     h: number,
     fill: (faceMul: number) => string,
     edge: string,
+    windows?: Win[],
+    winColor?: string,
   ): void => {
     const s = depthScale(d);
     const [cx, cy] = ground(d, v);
@@ -214,6 +318,18 @@ function draw(
     ctx.fillStyle = fill(1); // top face
     poly([tTop, tRight, tBot, tLeft]);
 
+    // lit windows on the right face (base edge bRight->bBot, extruded up hPx)
+    if (windows && winColor) {
+      ctx.fillStyle = winColor;
+      const sw = Math.max(1.1, dW * 0.18);
+      const sh = Math.max(1.1, hPx * 0.07);
+      for (const win of windows) {
+        const wx = bRight[0] + (bBot[0] - bRight[0]) * win.u;
+        const wy = bRight[1] + (bBot[1] - bRight[1]) * win.u - win.w * hPx;
+        ctx.fillRect(wx - sw / 2, wy - sh / 2, sw, sh);
+      }
+    }
+
     ctx.strokeStyle = edge;
     ctx.lineWidth = 1;
     strokePoly([tTop, tRight, tBot, tLeft]); // top outline
@@ -221,37 +337,42 @@ function draw(
   };
 
   // --- sky + horizon -------------------------------------------------------
-  ctx.fillStyle = INK;
+  // ground base lifts from ink toward a warm tone as colour arrives, so gaps
+  // between buildings don't read as black holes at full colour.
+  ctx.fillStyle = rgbStr(mix(C_INK, [34, 28, 32], Math.max(duskF, dawnF)));
   ctx.fillRect(0, 0, width, height);
 
   const sky = ctx.createLinearGradient(0, 0, 0, horizonY + camY);
-  sky.addColorStop(0, "rgb(5, 5, 8)"); // darker at the very top
-  sky.addColorStop(1, INK);
+  sky.addColorStop(0, rgbStr(skyTop));
+  sky.addColorStop(1, rgbStr(skyBot));
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, width, horizonY + camY + 1);
 
-  // distant skyscraper silhouettes along the horizon (dark masses, faint tops)
+  // distant skyscraper silhouettes along the horizon (warm up toward dawn)
   const skyBase = horizonY + camY;
+  const towerColor = rgbStr(mix([17, 18, 21], [44, 48, 74], duskF));
+  const towerTop = rgbaStr(mix(C_BONE, C_AMBER, dawnF), 0.05 + dawnF * 0.4);
   for (const t of SKYLINE) {
     const tw = t.w * width;
     const th = t.h * height;
     const tx = t.x * width;
-    ctx.fillStyle = "rgb(17, 18, 21)";
+    ctx.fillStyle = towerColor;
     ctx.fillRect(tx, skyBase - th, tw, th);
-    ctx.fillStyle = "rgba(247, 244, 236, 0.05)"; // faint lit top edge
+    ctx.fillStyle = towerTop; // lit top edge
     ctx.fillRect(tx, skyBase - th, tw, 1);
   }
-  // thin horizon glow to separate sky from ground
+  // thin horizon glow to separate sky from ground (warms into a dawn band)
+  const glowCol = mix(C_BONE, C_AMBER, dawnF);
   const glow = ctx.createLinearGradient(0, skyBase - 6, 0, skyBase + 6);
-  glow.addColorStop(0, "rgba(247, 244, 236, 0)");
-  glow.addColorStop(0.5, "rgba(247, 244, 236, 0.06)");
-  glow.addColorStop(1, "rgba(247, 244, 236, 0)");
+  glow.addColorStop(0, rgbaStr(glowCol, 0));
+  glow.addColorStop(0.5, rgbaStr(glowCol, 0.06 + dawnF * 0.22));
+  glow.addColorStop(1, rgbaStr(glowCol, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, skyBase - 6, width, 12);
 
   // --- road ----------------------------------------------------------------
   const SAMPLES = 60;
-  ctx.fillStyle = "rgb(22, 23, 26)"; // wet-asphalt dark
+  ctx.fillStyle = rgbStr(asphalt);
   for (let i = 0; i < SAMPLES; i++) {
     const dA = i / SAMPLES;
     const dB = (i + 1) / SAMPLES;
@@ -262,8 +383,23 @@ function draw(
       ground(dB, -ROAD_HALF),
     ]);
   }
-  // faint reflective sheen down the centre of the road
-  ctx.fillStyle = "rgba(247, 244, 236, 0.025)";
+
+  // cul-de-sac turning area at the end of the bend (grows on approach)
+  if (approach > 0.01) {
+    const [ccx, ccy] = ground(0.95, 0);
+    const cs = lanePx * depthScale(0.95);
+    const rx = cs * ROAD_HALF * 1.7 * approach;
+    ctx.fillStyle = rgbStr(asphalt);
+    ctx.beginPath();
+    ctx.ellipse(ccx, ccy, rx, rx * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = rgbaStr(mix(C_BONE, C_CYAN, roadColor), 0.1 + roadColor * 0.4);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // reflective sheen down the centre — strengthens as the rain stops
+  ctx.fillStyle = rgbaStr(mix(C_BONE, C_CYAN, roadColor * 0.6), 0.025 + wetness * 0.1);
   for (let i = 0; i < SAMPLES; i++) {
     const dA = i / SAMPLES;
     const dB = (i + 1) / SAMPLES;
@@ -274,9 +410,43 @@ function draw(
       ground(dB, -0.5),
     ]);
   }
-  // road edge lines + dashed centre line
-  ctx.strokeStyle = "rgba(247, 244, 236, 0.07)";
+
+  // the destination "home" at the end of the road — dark silhouette in noir,
+  // warm + lit windows + glow halo as the colour arc resolves.
+  if (homeAppear > 0.01) {
+    const [hx, hy] = ground(0.965, 0);
+    const hs = lanePx * depthScale(0.965);
+    const halo = ctx.createRadialGradient(
+      hx,
+      hy - hs * 1.2,
+      hs * 0.3,
+      hx,
+      hy - hs * 1.2,
+      hs * 5,
+    );
+    halo.addColorStop(0, rgbaStr(C_GOLD, 0.26 * homeAppear));
+    halo.addColorStop(1, rgbaStr(C_GOLD, 0));
+    ctx.fillStyle = halo;
+    ctx.fillRect(hx - hs * 6, hy - hs * 7, hs * 12, hs * 9);
+  }
+  drawIsoBox(
+    0.965,
+    0,
+    1.5,
+    1.9,
+    (m) => {
+      const dark: RGB = [16 * m, 15 * m, 16 * m];
+      const warm: RGB = [150 * m, 96 * m, 54 * m];
+      return rgbStr(mix(dark, warm, homeAppear));
+    },
+    rgbaStr(mix(C_BONE, C_GOLD, homeAppear), 0.2 + homeAppear * 0.4),
+    HOME_WINDOWS,
+    homeAppear > 0.02 ? rgbaStr(C_GOLD, 0.5 + homeAppear * 0.5) : undefined,
+  );
+
+  // road edge lines (neon cyan / magenta) + dashed centre line (gold)
   ctx.lineWidth = 1;
+  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_CYAN, roadColor), 0.07 + roadColor * 0.45);
   ctx.beginPath();
   for (let i = 0; i <= SAMPLES; i++) {
     const [lx, ly] = ground(i / SAMPLES, -ROAD_HALF);
@@ -284,6 +454,7 @@ function draw(
     else ctx.lineTo(lx, ly);
   }
   ctx.stroke();
+  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_MAGENTA, roadColor), 0.07 + roadColor * 0.45);
   ctx.beginPath();
   for (let i = 0; i <= SAMPLES; i++) {
     const [rx, ry] = ground(i / SAMPLES, ROAD_HALF);
@@ -291,7 +462,7 @@ function draw(
     else ctx.lineTo(rx, ry);
   }
   ctx.stroke();
-  ctx.strokeStyle = "rgba(247, 244, 236, 0.16)";
+  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_GOLD, roadColor), 0.16 + roadColor * 0.5);
   const DASH = 44;
   for (let i = 0; i < DASH; i += 2) {
     line(ground(i / DASH, 0), ground((i + 1) / DASH, 0));
@@ -327,56 +498,72 @@ function draw(
           (left[0] + right[0]) / 2,
           (left[1] + right[1]) / 2,
         );
-        beam.addColorStop(0, "rgba(247, 244, 236, 0.3)");
-        beam.addColorStop(1, "rgba(247, 244, 236, 0)");
+        // headlights warm toward amber as the car gains colour
+        const beamCol = mix(C_BONE, C_AMBER, carColor * 0.7);
+        beam.addColorStop(0, rgbaStr(beamCol, 0.3 + wetness * 0.05));
+        beam.addColorStop(1, rgbaStr(beamCol, 0));
         ctx.fillStyle = beam;
         poly([apex, left, right]);
       }
-      // car body — near-black iso box (a clear focal element, not a speck)
+      // car body — noir grey -> signature gold as carColor rises
       drawIsoBox(
         carD,
         0,
         0.85,
         1.2,
         (m) => {
-          const val = Math.round(7 * m + 2);
-          return `rgb(${val}, ${val}, ${val + 1})`;
+          const val = 7 * m + 2;
+          const noir: RGB = [val, val, val + 1];
+          const gold: RGB = [C_GOLD[0] * m, C_GOLD[1] * m, C_GOLD[2] * m];
+          return rgbStr(mix(noir, gold, carColor));
         },
-        "rgba(247, 244, 236, 0.26)",
+        rgbaStr(mix(C_BONE, C_GOLD, carColor), 0.26 + carColor * 0.2),
       );
       continue;
     }
 
     const b = it.b;
     const dim = 0.5 + (1 - b.d) * 0.5; // foreground brighter, horizon dimmer
+    const neon = NEON[b.neon];
+    // windows light during beat 3, scattered per-building by litOffset.
+    const winAlpha = Math.min(1, Math.max(0, cityColor * 1.5 - b.litOffset * 0.6));
     drawIsoBox(
       b.d,
       b.v,
       b.footW,
       b.h,
       (m) => {
-        const val = Math.round(b.tone * dim * m);
-        return `rgb(${val}, ${val}, ${val})`;
+        const g = b.tone * dim * m;
+        const noir: RGB = [g, g, g];
+        const warm: RGB = [g * 1.18, g * 1.02, g * 0.82]; // subtle warmth
+        return rgbStr(mix(noir, warm, cityColor));
       },
-      `rgba(247, 244, 236, ${(0.05 + (1 - b.d) * 0.08).toFixed(3)})`,
+      rgbaStr(mix(C_BONE, neon, cityColor * 0.5), 0.05 + (1 - b.d) * 0.08 + cityColor * 0.1),
+      b.windows,
+      winAlpha > 0.02 ? rgbaStr(neon, 0.35 + winAlpha * 0.6) : undefined,
     );
   }
 
-  // --- rain — heavy uniform diagonal streaks, offset by progress -----------
-  const slant = 0.16;
-  ctx.strokeStyle = "rgba(247, 244, 236, 0.1)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (const s of RAIN) {
-    const yy = ((s.y + progress * 1.1) % 1) * height;
-    const xx = s.x * width;
-    const L = s.len * height;
-    ctx.moveTo(xx, yy);
-    ctx.lineTo(xx - L * slant, yy + L);
+  // --- rain — heavy (beat 1) -> drizzle -> stopped (beat 4) ----------------
+  if (rainAmount > 0.01) {
+    const slant = 0.16;
+    ctx.strokeStyle = rgbaStr(C_BONE, 0.1 * rainAmount);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const count = Math.ceil(RAIN.length * rainAmount);
+    for (let i = 0; i < count; i++) {
+      const s = RAIN[i];
+      const yy = ((s.y + progress * 1.1) % 1) * height;
+      const xx = s.x * width;
+      const L = s.len * height;
+      ctx.moveTo(xx, yy);
+      ctx.lineTo(xx - L * slant, yy + L);
+    }
+    ctx.stroke();
   }
-  ctx.stroke();
 
-  // --- vignette — sink the edges into the ink (noir framing) ---------------
+  // --- vignette — heavy noir frame that lightens toward full colour --------
+  const vigAlpha = 0.7 - 0.45 * dawnF;
   const vg = ctx.createRadialGradient(
     width / 2,
     height * 0.55,
@@ -386,7 +573,7 @@ function draw(
     Math.max(width, height) * 0.75,
   );
   vg.addColorStop(0, "rgba(10, 10, 10, 0)");
-  vg.addColorStop(1, "rgba(10, 10, 10, 0.7)");
+  vg.addColorStop(1, rgbaStr(C_INK, vigAlpha));
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, width, height);
 }
