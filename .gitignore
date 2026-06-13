@@ -47,5 +47,4 @@ _reference/
 # Claude Code local settings
 .claude/
 shadeworks-assets/
-_prompts/
 src/_archive/
