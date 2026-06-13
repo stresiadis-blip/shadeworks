@@ -1,4 +1,4 @@
-# VECTR MODEL — Landing pivot — PROGRESS (3/9 commits)
+# VECTR MODEL — Landing pivot — PROGRESS (4/9 commits)
 
 Last updated: 2026-06-13
 Branch: `feature/vectr-model` (din `feature/scroll-story`). NU pushed, NU deployed.
@@ -40,9 +40,19 @@ Copy byte-for-byte din `src/data/studio.ts`. Logica GSAP portata din StoryScroll
 3. `730a59f` feat(landing): manifest + three capability tracks (S2)
    - `landing/ManifestSection.tsx` NOU. Iconite noir inline (`</>` / slidere / bullhorn).
      Driver reveal `[data-reveal]`/`[data-reveal-group]` mutat in LandingExperience.
+4. `40ac5fb` feat(landing): proof section — FerdiPoker receipt, qualitative LIVE/STRIPE/0-templates (S3)
+   - `landing/ProofSection.tsx` NOU (server component, montat sub ManifestSection in bg-ink).
+     Copy din studio.ts (PROOF_EYEBROW/HEADLINE) + getCaseStudy("ferdipoker") (name/tagline/stack/liveUrl).
+     Poza 4:3 noir-graded (border crimson/30, grayscale->color hover, gradient ink) link → /work/ferdipoker.
+     CTA "READ THE CASE STUDY" (gold) + link live discret "LIVE → ferdipoker.ro".
+     3 tile-uri calitative (data-reveal-group/item, FARA cifre): LIVE / STRIPE / 0 TEMPLATES.
+     Reveal doar prin atribute existente, zero JS local, reduced-motion static. tsc curat, build verde 27 pagini.
 
-## RAMAS DE FACUT (commit 4-9)
-4. PROOF / FerdiPoker (S3) — img + tile-uri LIVE/STRIPE/0-templates, CTA → /work/ferdipoker.
+## RAMAS DE FACUT (commit 5-9)
+
+> **ATENTIE — PLAN SCHIMBAT 2026-06-13.** Planul tipografic de mai jos (commit 5-9: engine sticky, process scrub, cta) e **CONGELAT/ABANDONAT**. Landing-ul pivoteaza pe **scroll-driven journey cinematic Sin City noir→color** cu animatie 3D izometrica pre-randata pe canvas (calea A, Blender). Concept complet + decizii: `C:\Users\stres\jarvis\projects\shadeworks\_prompts\CONCEPT-journey-noir-to-color.md`. Commit 1-4 (hero/manifest/proof) raman valide ca sectiuni editoriale post-journey. Engine/learn/build/deliver se muta IN journey. Nu mai executa planul de jos ca atare — se regandeste cand incepem productia (storyboard + Blender intai).
+
+--- plan vechi, pastrat ca referinta istorica ---
 5. ENGINE (S4) — device sticky Vectr: coloana stanga sticky (headline 80% faster),
    dreapta cei 3 agenti (ARCHITECT/BUILD/DEPLOY) curg pe langa. Iconite noir inline.
 6. PROCESS / OPERATORS (S5) — rail vertical scrub scaleY 0→1 + markere se aprind (3 pasi).

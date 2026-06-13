@@ -5,8 +5,10 @@ import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { LandingHero } from "./LandingHero";
+import { JourneySection } from "./JourneySection";
 import { ManifestSection } from "./ManifestSection";
 import { ProofSection } from "./ProofSection";
+import { EngineSection } from "./EngineSection";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -81,8 +83,10 @@ export function LandingExperience() {
           <div aria-hidden className="pointer-events-none h-[100svh] w-full" />
         )}
         <div className="bg-ink">
+          <JourneySection />
           <ManifestSection />
           <ProofSection />
+          <EngineSection />
           {/* sections added in the next commits */}
         </div>
       </div>
