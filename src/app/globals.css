@@ -35,6 +35,7 @@
   --font-display: var(--font-archivo), Impact, sans-serif;
   --font-heading: var(--font-oswald), "Arial Narrow", sans-serif;
   --font-condensed: var(--font-oswald), "Arial Narrow", sans-serif;
+  --font-accent: var(--font-playfair), Georgia, serif;
 
   /* shadcn passthroughs (kept so Card/Button/etc keep working) */
   --color-background: var(--background);
@@ -299,6 +300,11 @@
   /* Oswald — condensed noir-poster sub-display + body. */
   .font-condensed {
     font-family: var(--font-oswald), "Arial Narrow", sans-serif;
+  }
+
+  /* Playfair Display — editorial serif accent for eyebrows / short quotes. */
+  .font-accent {
+    font-family: var(--font-playfair), Georgia, serif;
   }
 
   /* ── NOIR ATMOSPHERE LAYERS ──────────────────────────────────── */

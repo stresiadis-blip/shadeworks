@@ -1,10 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { IdeaScannerConsole } from "@/components/gallery/IdeaScannerConsole";
-import { HERO_TITLE_LINES, STORY_EYEBROW, STORY_BRIDGE } from "@/data/studio";
+import {
+  HERO_TITLE_LINES,
+  STORY_EYEBROW,
+  STORY_BRIDGE,
+  MANIFEST_EYEBROW,
+  MANIFEST_HEADLINE,
+  MANIFEST_BODY,
+  ENGINE_EYEBROW,
+  ENGINE_HEADLINE,
+  ENGINE_BODY,
+  PROOF_EYEBROW,
+  PROOF_HEADLINE,
+  OPERATOR_EYEBROW,
+  OPERATOR_HEADLINE,
+  OPERATOR_BODY,
+} from "@/data/studio";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -35,7 +50,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-const ROAD_HALF = 2.4; // half road width, in lane units
+const ROAD_HALF = 3.4; // half road width, in lane units (wide, cinematic street)
 
 interface Building {
   d: number; // depth along the road, 0 = foreground/near, 1 = horizon/far
@@ -287,8 +302,9 @@ function draw(
     | { d: number; kind: "building"; b: Building }
     | { d: number; kind: "car" };
 
-  // Invert the road position so scrolling DOWN (progress -> 1) drives the car
-  // FORWARD toward the horizon, and scrolling up reverses it.
+  // Car depth mapping: at progress 0 the car sits near the horizon (far,
+  // small); as scroll progresses to 1 it drives TOWARD the camera (near, large,
+  // headlights facing the viewer). So carD goes 1 -> 0 with progress.
   const carD = 1 - progress;
 
   const items: Item[] = CITY.map((b) => ({ d: b.d, kind: "building", b }));
@@ -297,31 +313,31 @@ function draw(
 
   for (const it of items) {
     if (it.kind === "car") {
-      // headlight cones — faint white, leading the car in its travel direction
-      // (carD decreases as the car advances toward the horizon).
-      const dF = Math.max(carD - 0.16, 0);
-      for (const lamp of [-0.22, 0.22] as const) {
+      // headlight cones — faint white, cast toward the camera (smaller d) as the
+      // car approaches. Wide spread + decent reach so they read on the scene.
+      const dF = Math.max(carD - 0.28, 0);
+      for (const lamp of [-0.3, 0.3] as const) {
         const apex = ground(carD, lamp);
         apex[1] -= lanePx * depthScale(carD) * 0.3; // lift to lamp height
-        const left = ground(dF, lamp - 0.5);
-        const right = ground(dF, lamp + 0.5);
+        const left = ground(dF, lamp - 0.85);
+        const right = ground(dF, lamp + 0.85);
         const beam = ctx.createLinearGradient(
           apex[0],
           apex[1],
           (left[0] + right[0]) / 2,
           (left[1] + right[1]) / 2,
         );
-        beam.addColorStop(0, "rgba(247, 244, 236, 0.18)");
+        beam.addColorStop(0, "rgba(247, 244, 236, 0.3)");
         beam.addColorStop(1, "rgba(247, 244, 236, 0)");
         ctx.fillStyle = beam;
         poly([apex, left, right]);
       }
-      // car body — small near-black iso box with a faint bone edge
+      // car body — near-black iso box (a clear focal element, not a speck)
       drawIsoBox(
         carD,
         0,
-        0.5,
-        0.7,
+        0.85,
+        1.2,
         (m) => {
           const val = Math.round(7 * m + 2);
           return `rgb(${val}, ${val}, ${val + 1})`;
@@ -375,6 +391,54 @@ function draw(
   ctx.fillRect(0, 0, width, height);
 }
 
+// ---------------------------------------------------------------------------
+// Per-chapter overlay (model B): ONE continuous journey, chapters cross-fade on
+// the SAME scroll progress that drives the canvas. Copy is byte-for-byte from
+// studio.ts — never rewritten here.
+// ---------------------------------------------------------------------------
+
+const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
+
+/**
+ * Opacity for a chapter visible across [start, end], fading in just before
+ * `start` and out just after `end` (FADE-wide ramps) so neighbours cross-fade.
+ */
+const FADE = 0.04;
+function bandOpacity(p: number, start: number, end: number): number {
+  const fadeIn = clamp01((p - (start - FADE)) / FADE); // reaches 1 at p = start
+  const fadeOut = clamp01((end + FADE - p) / FADE); // 1 until p = end
+  return Math.min(fadeIn, fadeOut);
+}
+
+// Shared overlay typography — scaled to sit IN the scene (not a pasted hero).
+const EYEBROW_CLS =
+  "mb-5 font-accent text-base tracking-wide text-signal md:text-xl";
+const HEADLINE_CLS =
+  "font-display-black text-2xl leading-[1.04] text-bone md:text-4xl";
+const BODY_CLS =
+  "mx-auto mt-6 max-w-xl font-mono text-xs leading-relaxed tracking-wide text-bone-muted md:text-sm";
+const CTA_CLS =
+  "mt-10 bg-crimson px-9 py-4 font-mono text-xs uppercase tracking-[0.3em] text-bone transition-all hover:-translate-y-0.5 hover:bg-crimson-bright";
+
+/** A single overlay chapter — absolutely stacked, opacity driven by scroll. */
+function Chapter({
+  opacity,
+  children,
+}: {
+  opacity: number;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center"
+      style={{ opacity }}
+      aria-hidden={opacity < 0.5}
+    >
+      <div className="relative mx-auto max-w-4xl">{children}</div>
+    </div>
+  );
+}
+
 /**
  * The landing journey — a tall pinned scroll container whose full-viewport
  * canvas is driven by a single scroll progress value (0->1), with a text
@@ -392,6 +456,10 @@ export function JourneySection() {
   const pinRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [consoleOpen, setConsoleOpen] = useState(false);
+  // Scroll progress lifted from ScrollTrigger so the overlay chapters read the
+  // SAME value the canvas renders from. lastProgressRef throttles re-renders.
+  const [progress, setProgress] = useState(0);
+  const lastProgressRef = useRef(0);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -431,7 +499,14 @@ export function JourneySection() {
         scrub: true,
         pin: pin,
         pinSpacing: false,
-        onUpdate: (self) => render(self.progress),
+        onUpdate: (self) => {
+          render(self.progress); // canvas stays on the existing render path
+          // Mirror progress into React for the overlay (throttled to changes).
+          if (Math.abs(self.progress - lastProgressRef.current) > 0.004) {
+            lastProgressRef.current = self.progress;
+            setProgress(self.progress);
+          }
+        },
       });
 
       // Debounced resize — re-fit the backing store, then redraw + refit ST.
@@ -477,47 +552,89 @@ export function JourneySection() {
     return () => mm.revert();
   }, []);
 
+  // Chapter opacities from the shared scroll progress (model B cross-fade).
+  const op1 = bandOpacity(progress, 0.0, 0.18); // opener
+  const op2 = bandOpacity(progress, 0.2, 0.38); // the studio / manifest
+  const op3 = bandOpacity(progress, 0.42, 0.6); // the engine
+  const op4 = bandOpacity(progress, 0.64, 0.8); // proof
+  const op5 = bandOpacity(progress, 0.84, 1.0); // operators + final CTA
+  const openConsole = () => setConsoleOpen(true);
+
   return (
     <section ref={sectionRef} className="relative bg-ink">
       <div ref={pinRef} className="relative h-[100svh] w-full overflow-hidden">
         <canvas ref={canvasRef} className="block h-full w-full" />
 
-        {/* text overlay — chapter 1 (static for C1). pointer-events-none so the
-            page still scrolls/clicks through; only the CTA is interactive. The
-            canvas already carries its own vignette, so we add NO grain/vignette
-            here (that produced the shadow artifact) — just a soft legibility
-            scrim behind the centred copy. */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
+        {/* text overlay — 5 chapters cross-fading on scroll. pointer-events-none
+            so the page still scrolls/clicks through; only the active chapter's
+            CTA is interactive. The canvas already carries its own vignette, so
+            we add NO grain/vignette here (that produced the shadow artifact) —
+            just a soft legibility scrim behind the centred copy. */}
+        <div className="pointer-events-none absolute inset-0">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0"
+            className="absolute inset-0"
             style={{
               background:
                 "radial-gradient(ellipse 60% 50% at 50% 45%, rgba(10,10,10,0.6), transparent 70%)",
             }}
           />
-          <div className="relative mx-auto max-w-5xl">
-            <p className="mb-8 font-mono text-[10px] uppercase tracking-[0.4em] text-signal">
-              {STORY_EYEBROW}
-            </p>
-            <h1 className="font-display-black text-4xl leading-[0.92] text-bone md:text-7xl lg:text-8xl">
+
+          {/* CH1 — opener */}
+          <Chapter opacity={op1}>
+            <p className={EYEBROW_CLS}>{STORY_EYEBROW}</p>
+            <h1 className="font-display-black text-4xl leading-[0.95] text-bone md:text-6xl">
               {HERO_TITLE_LINES.map((line) => (
                 <span key={line} className="block">
                   {line}
                 </span>
               ))}
             </h1>
-            <p className="mx-auto mt-10 max-w-xl font-mono text-xs leading-relaxed tracking-wide text-bone-muted md:text-sm">
-              {STORY_BRIDGE}
-            </p>
+            <p className={BODY_CLS}>{STORY_BRIDGE}</p>
             <button
               type="button"
-              onClick={() => setConsoleOpen(true)}
-              className="pointer-events-auto mt-12 bg-crimson px-10 py-5 font-mono text-xs uppercase tracking-[0.3em] text-bone transition-all hover:-translate-y-0.5 hover:bg-crimson-bright"
+              onClick={openConsole}
+              style={{ pointerEvents: op1 > 0.5 ? "auto" : "none" }}
+              className={CTA_CLS}
             >
               EXECUTE DESCENT
             </button>
-          </div>
+          </Chapter>
+
+          {/* CH2 — the studio / manifest */}
+          <Chapter opacity={op2}>
+            <p className={EYEBROW_CLS}>{MANIFEST_EYEBROW}</p>
+            <h2 className={HEADLINE_CLS}>{MANIFEST_HEADLINE}</h2>
+            <p className={BODY_CLS}>{MANIFEST_BODY}</p>
+          </Chapter>
+
+          {/* CH3 — the engine */}
+          <Chapter opacity={op3}>
+            <p className={EYEBROW_CLS}>{ENGINE_EYEBROW}</p>
+            <h2 className={HEADLINE_CLS}>{ENGINE_HEADLINE}</h2>
+            <p className={BODY_CLS}>{ENGINE_BODY}</p>
+          </Chapter>
+
+          {/* CH4 — proof (text only; FerdiPoker media lands later) */}
+          <Chapter opacity={op4}>
+            <p className={EYEBROW_CLS}>{PROOF_EYEBROW}</p>
+            <h2 className={HEADLINE_CLS}>{PROOF_HEADLINE}</h2>
+          </Chapter>
+
+          {/* CH5 — operators + final CTA */}
+          <Chapter opacity={op5}>
+            <p className={EYEBROW_CLS}>{OPERATOR_EYEBROW}</p>
+            <h2 className={HEADLINE_CLS}>{OPERATOR_HEADLINE}</h2>
+            <p className={BODY_CLS}>{OPERATOR_BODY}</p>
+            <button
+              type="button"
+              onClick={openConsole}
+              style={{ pointerEvents: op5 > 0.5 ? "auto" : "none" }}
+              className={CTA_CLS}
+            >
+              EXECUTE DESCENT
+            </button>
+          </Chapter>
         </div>
       </div>
 
