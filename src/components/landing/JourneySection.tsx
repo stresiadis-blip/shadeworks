@@ -294,13 +294,34 @@ function drawCameraA(
     const amp = width * 0.24 * (0.6 + bend * 0.4);
     return width * 0.5 + Math.sin(d * Math.PI * 2) * amp * (1 - d);
   };
-  // ground() also applies a global leftward slide driven by cameraAngle, so the
-  // whole city+road pans left on scroll (a Vectr-style camera move; projection
-  // angle itself is untouched here).
-  const ground = (d: number, v: number): [number, number] => [
-    centerX(d) + v * lanePx * depthScale(d) - cameraAngle * width * 0.22,
-    groundY(d),
-  ];
+
+  // SINGLE interpolated projection. Every point is (d = depth along road,
+  // v = lateral). ground() lerps each component between the ISO down-the-road
+  // framing (cameraAngle 0) and a flat SIDE-PROFILE framing (cameraAngle 1) —
+  // one system, zero dissolve. At angle 0 this is byte-identical to D2a.
+  //   ISO : depth -> vertical (near=bottom/far=top), perspective scale.
+  //   SIDE: depth -> horizontal (near=left .. far/home=right), v -> small
+  //         vertical offset, near-constant scale (flat elevation).
+  const SIDE_NEAR_X = width * 0.18; // d = 0 (near end of the road)
+  const SIDE_FAR_X = width * 1.06; // d = 1 (horizon / home — lands on the right)
+  const SIDE_GROUND_Y = height * 0.62;
+  const SIDE_V_PX = lanePx * 0.3; // lateral -> vertical layering at side
+  const SIDE_SCALE = 0.55; // flat, near-constant box scale at side
+  // Interpolated per-depth scale used for box/marker sizes (kills perspective
+  // shrink as we rotate to the flat side view).
+  const sceneScale = (d: number): number =>
+    lerp(depthScale(d), SIDE_SCALE, cameraAngle);
+  const ground = (d: number, v: number): [number, number] => {
+    const sIso = depthScale(d);
+    const xIso = centerX(d) + v * lanePx * sIso;
+    const yIso = groundY(d);
+    const xSide = lerp(SIDE_NEAR_X, SIDE_FAR_X, d);
+    const ySide = SIDE_GROUND_Y + v * SIDE_V_PX;
+    // keep the D2a global leftward slide on top of the blend
+    const x = lerp(xIso, xSide, cameraAngle) - cameraAngle * width * 0.22;
+    const y = lerp(yIso, ySide, cameraAngle);
+    return [x, y];
+  };
 
   // Polygon/line helpers operating on projected [x, y] points.
   const poly = (pts: [number, number][]): void => {
@@ -335,10 +356,12 @@ function drawCameraA(
     windows?: Win[],
     winColor?: string,
   ): void => {
-    const s = depthScale(d);
+    const s = sceneScale(d);
     const [cx, cy] = ground(d, v);
     const dW = footW * lanePx * s * 0.5;
-    const dH = dW * 0.5; // 2:1 isometric diamond
+    // 2:1 isometric diamond at angle 0; flattens to 0 at side so the box reads
+    // as a clean front-on rectangle (profile elevation) instead of a diamond.
+    const dH = dW * 0.5 * (1 - cameraAngle);
     const hPx = h * lanePx * s;
 
     const bRight: [number, number] = [cx + dW, cy];
@@ -425,7 +448,7 @@ function drawCameraA(
   // cul-de-sac turning area at the end of the bend (grows on approach)
   if (approach > 0.01) {
     const [ccx, ccy] = ground(0.95, 0);
-    const cs = lanePx * depthScale(0.95);
+    const cs = lanePx * sceneScale(0.95);
     const rx = cs * ROAD_HALF * 1.7 * approach;
     ctx.fillStyle = rgbStr(asphalt);
     ctx.beginPath();
@@ -453,7 +476,7 @@ function drawCameraA(
   // warm + lit windows + glow halo as the colour arc resolves.
   if (homeAppear > 0.01) {
     const [hx, hy] = ground(0.965, 0);
-    const hs = lanePx * depthScale(0.965);
+    const hs = lanePx * sceneScale(0.965);
     const halo = ctx.createRadialGradient(
       hx,
       hy - hs * 1.2,
@@ -511,23 +534,27 @@ function drawCameraA(
     | { d: number; kind: "building"; b: Building }
     | { d: number; kind: "car" };
 
-  // Car depth mapping: at progress 0 the car sits near the horizon (far,
-  // small); as scroll progresses to 1 it drives TOWARD the camera (near, large,
-  // headlights facing the viewer). So carD goes 1 -> 0 with progress.
+  // Car depth mapping. ISO (angle 0): carD = 1 - progress, so the car drives
+  // TOWARD the camera. SIDE (angle 1): the car drives rightward toward the home
+  // (large d = right), so we blend its DRAWN depth from carD to a forward-moving
+  // side depth. carDraw == carD at angle 0 (D2a identical).
   const carD = 1 - progress;
+  const carSideD = lerp(0.25, 0.9, progress); // ends just left of the home
+  const carDraw = lerp(carD, carSideD, cameraAngle);
 
   const items: Item[] = CITY.map((b) => ({ d: b.d, kind: "building", b }));
-  items.push({ d: carD, kind: "car" });
+  items.push({ d: carDraw, kind: "car" });
   items.sort((p, q) => q.d - p.d); // farthest first (drawn behind)
 
   for (const it of items) {
     if (it.kind === "car") {
-      // headlight cones — faint white, cast toward the camera (smaller d) as the
-      // car approaches. Wide spread + decent reach so they read on the scene.
-      const dF = Math.max(carD - 0.28, 0);
+      // headlight cones — point in the direction of travel: toward the camera
+      // (smaller d) in iso, toward the home (larger d) in side view.
+      const dFoff = lerp(-0.28, 0.3, cameraAngle);
+      const dF = Math.min(Math.max(carDraw + dFoff, 0), 1);
       for (const lamp of [-0.3, 0.3] as const) {
-        const apex = ground(carD, lamp);
-        apex[1] -= lanePx * depthScale(carD) * 0.3; // lift to lamp height
+        const apex = ground(carDraw, lamp);
+        apex[1] -= lanePx * sceneScale(carDraw) * 0.3; // lift to lamp height
         const left = ground(dF, lamp - 0.85);
         const right = ground(dF, lamp + 0.85);
         const beam = ctx.createLinearGradient(
@@ -543,12 +570,14 @@ function drawCameraA(
         ctx.fillStyle = beam;
         poly([apex, left, right]);
       }
-      // car body — noir grey -> signature gold as carColor rises
+      // car body — noir grey -> signature gold as carColor rises. Footprint
+      // widens / height drops with cameraAngle so the flattened box reads as a
+      // wide car profile (not a tall block) in the side view.
       drawIsoBox(
-        carD,
+        carDraw,
         0,
-        0.85,
-        1.2,
+        lerp(0.85, 2.4, cameraAngle),
+        lerp(1.2, 0.7, cameraAngle),
         (m) => {
           const val = 7 * m + 2;
           const noir: RGB = [val, val, val + 1];
@@ -561,10 +590,22 @@ function drawCameraA(
     }
 
     const b = it.b;
+    // Foreground buildings fade out as the car comes toward the camera, so they
+    // don't occlude it. Nearest (b.d ~ 0) fade most; mid/far stay opaque. At
+    // progress 0 nothing fades (identical to D2b).
+    const foreFade = 1 - smoothstep(0.0, 0.18, b.d);
+    const nearPass = smoothstep(0.15, 0.55, progress);
+    const buildingAlpha = 1 - foreFade * nearPass;
+    if (buildingAlpha <= 0.02) continue; // fully faded — skip rendering
     const dim = 0.5 + (1 - b.d) * 0.5; // foreground brighter, horizon dimmer
     const neon = NEON[b.neon];
     // windows light during beat 3, scattered per-building by litOffset.
     const winAlpha = Math.min(1, Math.max(0, cityColor * 1.5 - b.litOffset * 0.6));
+    const faded = buildingAlpha < 1;
+    if (faded) {
+      ctx.save();
+      ctx.globalAlpha = buildingAlpha;
+    }
     drawIsoBox(
       b.d,
       b.v,
@@ -580,6 +621,7 @@ function drawCameraA(
       b.windows,
       winAlpha > 0.02 ? rgbaStr(neon, 0.35 + winAlpha * 0.6) : undefined,
     );
+    if (faded) ctx.restore();
   }
 
   // --- rain — heavy (beat 1) -> drizzle -> stopped (beat 4) ----------------
