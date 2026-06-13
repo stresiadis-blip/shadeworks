@@ -16,6 +16,7 @@ import {
   ENGINE_BODY,
   PROOF_EYEBROW,
   PROOF_HEADLINE,
+  PROOF_BODY,
   OPERATOR_EYEBROW,
   OPERATOR_HEADLINE,
   OPERATOR_BODY,
@@ -228,108 +229,78 @@ const SKYLINE = buildSkyline();
 const RAIN = buildRain();
 const SIDE_CITY = buildSideCity();
 
-/**
- * COMMIT B — the isometric noir city as a cinematic film frame. Fully
- * monochrome (the color arc is commit C). Top ~25% is night sky + a horizon
- * line of distant skyscraper silhouettes; below it a tilted-isometric city
- * flanks a wet-asphalt road that runs from the foreground UP toward the
- * horizon (fake-perspective depth scaling: near = large/crisp, far =
- * small/dim). A small car drives up the road from near to far as progress
- * 0->1, with faint white headlight cones. Heavy diagonal rain over the frame.
- * The camera loosely pans vertically as the car advances (not locked centre).
- *
- * width/height are CSS pixels — the caller has already applied the
- * devicePixelRatio transform, so all coordinates here stay in layout space.
- *
- * This is CAMERA A — the down-the-road view used for almost the whole scroll.
- * Near the end the orchestrator cross-fades to CAMERA B (side profile).
- */
 function drawCameraA(
   ctx: CanvasRenderingContext2D,
   progress: number,
   width: number,
   height: number,
 ): void {
-  // --- colour-arc factors (all driven by the shared scroll progress) -------
-  const roadColor = smoothstep(BEAT1_END, BEAT2_END, progress); // road first
-  const carColor = smoothstep(0.48, 0.7, progress); // car tints late beat 2->3
-  const cityColor = smoothstep(0.2, 0.65, progress); // windows start breathing ~20%
-  const duskF = smoothstep(0.45, 0.8, progress); // sky -> dusk blue
-  const dawnF = smoothstep(0.8, 1.0, progress); // sky -> warm dawn
-  const approach = smoothstep(0.55, 0.85, progress); // cul-de-sac grows
-  const homeAppear = smoothstep(0.55, 0.92, progress); // home lights up
-  const bend = smoothstep(BEAT1_END, BEAT3_END, progress); // road bends right
-  const rainAmount = 1 - smoothstep(0.18, 0.85, progress); // heavy -> zero
-  const wetness = smoothstep(0.5, 1.0, progress); // reflections grow
-  // 0 = down-the-road, 1 = full side. D2a uses it ONLY for a global lateral
-  // slide (incipient Vectr pan); the isometric rotation lands in D2b.
-  const cameraAngle = smoothstep(0.4, 0.9, progress);
-  // D3b: cinematic push-in. Strong early (car approaching, iso), neutralized at side-view
-  const zoomRaw = smoothstep(0.0, 0.55, progress);
-  const zoom = 1 + zoomRaw * 0.35 * (1 - cameraAngle);
+  // ===========================================================================
+  // FIVE ACTS on a single clock (progress). HARD CUT at CUT between the iso
+  // down-the-road view (acts 1-3) and the flat side-profile arrival (acts 4-5).
+  // No hybrid projection => no overlap. Each act maps to a fixed progress band:
+  //   ACT1 0.00-0.20 exposition  — noir, car far, approaching
+  //   ACT2 0.20-0.40 inciting     — windows wake, car mid-road
+  //   ACT3 0.40-0.62 rising       — car near, road bends, push-in peaks
+  //   --- CUT (0.62) iso -> side ---
+  //   ACT4 0.62-0.85 climax       — side profile, sunrise breaks
+  //   ACT5 0.85-1.00 resolution   — full day, car parks home
+  // ===========================================================================
+  const CUT = 0.62;
 
-  const skyTop = mix(mix(SKY_NOIR_TOP, SKY_DUSK_TOP, duskF), SKY_DAWN_TOP, dawnF);
-  const skyBot = mix(mix(SKY_NOIR_BOT, SKY_DUSK_BOT, duskF), SKY_DAWN_BOT, dawnF);
-  const asphalt = mix(
-    mix([22, 23, 26], [30, 27, 34], roadColor),
-    [46, 38, 40],
-    dawnF * 0.6,
-  );
+  if (progress < CUT) {
+    drawIsoAct(ctx, progress / CUT, width, height); // local 0..1 across acts 1-3
+  } else {
+    drawSideAct(ctx, (progress - CUT) / (1 - CUT), width, height); // local 0..1 acts 4-5
+  }
+}
 
-  // --- frame + projection setup -------------------------------------------
+// ---------------------------------------------------------------------------
+// ACTS 1-3 — iso down-the-road. `t` is local 0..1 (global 0..CUT). Road shape
+// is FIXED (does not morph on scroll); only the car advances, lights wake, and
+// the camera pushes in. No camera rotation here — the rotation is the hard cut.
+// ---------------------------------------------------------------------------
+function drawIsoAct(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  width: number,
+  height: number,
+): void {
+  const cityColor = smoothstep(0.15, 0.85, t); // windows wake gradually from early
+  const duskF = smoothstep(0.45, 1.0, t); // sky lifts noir -> dusk by end of act 3
+  const rainAmount = 1 - smoothstep(0.2, 0.9, t);
+  const zoom = 1 + smoothstep(0.0, 1.0, t) * 0.5; // cinematic push-in across the approach
+
+  const skyTop = mix(SKY_NOIR_TOP, SKY_DUSK_TOP, duskF);
+  const skyBot = mix(SKY_NOIR_BOT, SKY_DUSK_BOT, duskF);
+  const asphalt = mix([22, 23, 26], [30, 27, 34], duskF * 0.6);
+
   const horizonY = height * 0.26;
-  const bottomY = height * 1.04; // road mouth sits just off the bottom edge
+  const bottomY = height * 1.04;
   const lanePx = Math.max(20, width * 0.05);
-  const camY = -height * 0.04 * progress; // gentle vertical pan, eased by car
 
-  // Fake perspective: depth 0 (near) -> scale 1, depth 1 (horizon) -> small.
   const depthScale = (d: number): number => 1 / (1 + d * 5);
   const sFar = depthScale(1);
   const yNorm = (d: number): number => (depthScale(d) - sFar) / (1 - sFar);
   const groundY = (d: number): number =>
-    horizonY + (bottomY - horizonY) * yNorm(d) + camY;
-  // Road centreline: a double-S serpentine — a right bend near the camera that
-  // resolves into a left bend, the lateral amplitude fading to 0 at the horizon
-  // so the road converges on the vanishing point (C-infinity, no hard edges).
-  // sin(2*pi*d) is one full wave over the road = right-then-left; the existing
-  // `bend` factor deepens the S as the scroll advances.
-  const centerX = (d: number): number => {
-    const amp = width * 0.24 * (0.6 + bend * 0.4);
-    return width * 0.5 + Math.sin(d * Math.PI * 2) * amp * (1 - d);
-  };
+    horizonY + (bottomY - horizonY) * yNorm(d);
+  // FIXED double-S serpentine — does NOT change shape on scroll (constant amp).
+  const centerX = (d: number): number =>
+    width * 0.5 + Math.sin(d * Math.PI * 2) * width * 0.22 * (1 - d);
 
-  // SINGLE interpolated projection. Every point is (d = depth along road,
-  // v = lateral). ground() lerps each component between the ISO down-the-road
-  // framing (cameraAngle 0) and a flat SIDE-PROFILE framing (cameraAngle 1) —
-  // one system, zero dissolve. At angle 0 this is byte-identical to D2a.
-  //   ISO : depth -> vertical (near=bottom/far=top), perspective scale.
-  //   SIDE: depth -> horizontal (near=left .. far/home=right), v -> small
-  //         vertical offset, near-constant scale (flat elevation).
-  const SIDE_NEAR_X = width * 0.18; // d = 0 (near end of the road)
-  const SIDE_FAR_X = width * 1.06; // d = 1 (horizon / home — lands on the right)
-  const SIDE_GROUND_Y = height * 0.62;
-  const SIDE_V_PX = lanePx * 0.3; // lateral -> vertical layering at side
-  const SIDE_SCALE = 0.55; // flat, near-constant box scale at side
-  // Interpolated per-depth scale used for box/marker sizes (kills perspective
-  // shrink as we rotate to the flat side view).
-  const sceneScale = (d: number): number =>
-    lerp(depthScale(d), SIDE_SCALE, cameraAngle) * zoom;
+  // centered push-in helper
+  const cx0 = width / 2;
+  const cy0 = groundY(0);
+  const pz = (x: number, y: number): [number, number] => [
+    cx0 + (x - cx0) * zoom,
+    cy0 + (y - cy0) * zoom,
+  ];
   const ground = (d: number, v: number): [number, number] => {
-    const sIso = depthScale(d);
-    const xIso = centerX(d) + v * lanePx * sIso;
-    const yIso = groundY(d);
-    const xSide = lerp(SIDE_NEAR_X, SIDE_FAR_X, d);
-    const ySide = SIDE_GROUND_Y + v * SIDE_V_PX;
-    // keep the D2a global leftward slide on top of the blend
-    const x = lerp(xIso, xSide, cameraAngle) - cameraAngle * width * 0.22;
-    const y = lerp(yIso, ySide, cameraAngle);
-    // D3b: scale final position toward screen center so zoom is a centered push-in, not a pan
-    const cx = width / 2;
-    const cy = groundY(0); // focal anchor near horizon base; adjust if needed
-    return [cx + (x - cx) * zoom, cy + (y - cy) * zoom];
+    const s = depthScale(d);
+    return pz(centerX(d) + v * lanePx * s, groundY(d));
   };
+  const sceneScale = (d: number): number => depthScale(d) * zoom;
 
-  // Polygon/line helpers operating on projected [x, y] points.
   const poly = (pts: [number, number][]): void => {
     ctx.beginPath();
     pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
@@ -349,15 +320,13 @@ function drawCameraA(
     ctx.stroke();
   };
 
-  // One tilted-isometric extruded box at (d, v): 2:1 diamond base + two visible
-  // side faces + top, depth-scaled. fill(faceMul) tones the three faces.
-  // Optional lit windows (winColor rgba) are painted on the right face.
+  // iso extruded box (2:1 diamond + two faces + top), depth-scaled
   const drawIsoBox = (
     d: number,
     v: number,
     footW: number,
     h: number,
-    fill: (faceMul: number) => string,
+    fill: (m: number) => string,
     edge: string,
     windows?: Win[],
     winColor?: string,
@@ -365,11 +334,8 @@ function drawCameraA(
     const s = sceneScale(d);
     const [cx, cy] = ground(d, v);
     const dW = footW * lanePx * s * 0.5;
-    // 2:1 isometric diamond at angle 0; flattens to 0 at side so the box reads
-    // as a clean front-on rectangle (profile elevation) instead of a diamond.
-    const dH = dW * 0.5 * (1 - cameraAngle);
+    const dH = dW * 0.5;
     const hPx = h * lanePx * s;
-
     const bRight: [number, number] = [cx + dW, cy];
     const bBot: [number, number] = [cx, cy + dH];
     const bLeft: [number, number] = [cx - dW, cy];
@@ -377,15 +343,12 @@ function drawCameraA(
     const tRight: [number, number] = [cx + dW, cy - hPx];
     const tBot: [number, number] = [cx, cy + dH - hPx];
     const tLeft: [number, number] = [cx - dW, cy - hPx];
-
-    ctx.fillStyle = fill(0.66); // right face (lit edge)
+    ctx.fillStyle = fill(0.66);
     poly([bRight, bBot, tBot, tRight]);
-    ctx.fillStyle = fill(0.4); // left face (in shadow)
+    ctx.fillStyle = fill(0.4);
     poly([bLeft, bBot, tBot, tLeft]);
-    ctx.fillStyle = fill(1); // top face
+    ctx.fillStyle = fill(1);
     poly([tTop, tRight, tBot, tLeft]);
-
-    // lit windows on the right face (base edge bRight->bBot, extruded up hPx)
     if (windows && winColor) {
       ctx.fillStyle = winColor;
       const sw = Math.max(1.1, dW * 0.18);
@@ -396,285 +359,130 @@ function drawCameraA(
         ctx.fillRect(wx - sw / 2, wy - sh / 2, sw, sh);
       }
     }
-
     ctx.strokeStyle = edge;
     ctx.lineWidth = 1;
-    strokePoly([tTop, tRight, tBot, tLeft]); // top outline
-    line(bBot, tBot); // front vertical edge
+    strokePoly([tTop, tRight, tBot, tLeft]);
+    line(bBot, tBot);
   };
 
-  // --- sky + horizon -------------------------------------------------------
-  // ground base lifts from ink toward a warm tone as colour arrives, so gaps
-  // between buildings don't read as black holes at full colour.
-  ctx.fillStyle = rgbStr(mix(C_INK, [34, 28, 32], Math.max(duskF, dawnF)));
+  // sky + ground base
+  ctx.fillStyle = rgbStr(mix(C_INK, [22, 22, 28], duskF));
   ctx.fillRect(0, 0, width, height);
-
-  const sky = ctx.createLinearGradient(0, 0, 0, horizonY + camY);
+  const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
   sky.addColorStop(0, rgbStr(skyTop));
   sky.addColorStop(1, rgbStr(skyBot));
   ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, width, horizonY + camY + 1);
+  ctx.fillRect(0, 0, width, horizonY + 1);
 
-  // distant skyscraper silhouettes along the horizon (warm up toward dawn)
-  const skyBase = horizonY + camY;
-  const towerColor = rgbStr(mix([17, 18, 21], [44, 48, 74], duskF));
-  const towerTop = rgbaStr(mix(C_BONE, C_AMBER, dawnF), 0.05 + dawnF * 0.4);
-  for (const t of SKYLINE) {
-    const tw = t.w * width;
-    const th = t.h * height;
-    const tx = t.x * width;
-    ctx.fillStyle = towerColor;
-    ctx.fillRect(tx, skyBase - th, tw, th);
-    ctx.fillStyle = towerTop; // lit top edge
-    ctx.fillRect(tx, skyBase - th, tw, 1);
+  // distant skyline
+  const skyBase = horizonY;
+  ctx.fillStyle = rgbStr(mix([17, 18, 21], [40, 44, 70], duskF));
+  for (const tw of SKYLINE) {
+    ctx.fillRect(tw.x * width, skyBase - tw.h * height, tw.w * width, tw.h * height);
   }
-  // thin horizon glow to separate sky from ground (warms into a dawn band)
-  const glowCol = mix(C_BONE, C_AMBER, dawnF);
-  const glow = ctx.createLinearGradient(0, skyBase - 6, 0, skyBase + 6);
-  glow.addColorStop(0, rgbaStr(glowCol, 0));
-  glow.addColorStop(0.5, rgbaStr(glowCol, 0.06 + dawnF * 0.22));
-  glow.addColorStop(1, rgbaStr(glowCol, 0));
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, skyBase - 6, width, 12);
 
-  // --- road ----------------------------------------------------------------
+  // road surface (fixed serpentine)
   const SAMPLES = 60;
   ctx.fillStyle = rgbStr(asphalt);
   for (let i = 0; i < SAMPLES; i++) {
     const dA = i / SAMPLES;
     const dB = (i + 1) / SAMPLES;
-    poly([
-      ground(dA, -ROAD_HALF),
-      ground(dA, ROAD_HALF),
-      ground(dB, ROAD_HALF),
-      ground(dB, -ROAD_HALF),
-    ]);
+    poly([ground(dA, -ROAD_HALF), ground(dA, ROAD_HALF), ground(dB, ROAD_HALF), ground(dB, -ROAD_HALF)]);
   }
-
-  // cul-de-sac turning area at the end of the bend (grows on approach)
-  if (approach > 0.01) {
-    const [ccx, ccy] = ground(0.95, 0);
-    const cs = lanePx * sceneScale(0.95);
-    const rx = cs * ROAD_HALF * 1.7 * approach;
-    ctx.fillStyle = rgbStr(asphalt);
-    ctx.beginPath();
-    ctx.ellipse(ccx, ccy, rx, rx * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = rgbaStr(mix(C_BONE, C_CYAN, roadColor), 0.1 + roadColor * 0.4);
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
-
-  // reflective sheen down the centre — strengthens as the rain stops
-  ctx.fillStyle = rgbaStr(mix(C_BONE, C_CYAN, roadColor * 0.6), 0.025 + wetness * 0.1);
-  for (let i = 0; i < SAMPLES; i++) {
-    const dA = i / SAMPLES;
-    const dB = (i + 1) / SAMPLES;
-    poly([
-      ground(dA, -0.5),
-      ground(dA, 0.5),
-      ground(dB, 0.5),
-      ground(dB, -0.5),
-    ]);
-  }
-
-  // the destination "home" at the end of the road — dark silhouette in noir,
-  // warm + lit windows + glow halo as the colour arc resolves.
-  if (homeAppear > 0.01) {
-    const [hx, hy] = ground(0.965, 0);
-    const hs = lanePx * sceneScale(0.965);
-    const halo = ctx.createRadialGradient(
-      hx,
-      hy - hs * 1.2,
-      hs * 0.3,
-      hx,
-      hy - hs * 1.2,
-      hs * 5,
-    );
-    halo.addColorStop(0, rgbaStr(C_GOLD, 0.26 * homeAppear));
-    halo.addColorStop(1, rgbaStr(C_GOLD, 0));
-    ctx.fillStyle = halo;
-    ctx.fillRect(hx - hs * 6, hy - hs * 7, hs * 12, hs * 9);
-  }
-  drawIsoBox(
-    0.965,
-    0,
-    1.5,
-    1.9,
-    (m) => {
-      const dark: RGB = [16 * m, 15 * m, 16 * m];
-      const warm: RGB = [150 * m, 96 * m, 54 * m];
-      return rgbStr(mix(dark, warm, homeAppear));
-    },
-    rgbaStr(mix(C_BONE, C_GOLD, homeAppear), 0.2 + homeAppear * 0.4),
-    HOME_WINDOWS,
-    homeAppear > 0.02 ? rgbaStr(C_GOLD, 0.5 + homeAppear * 0.5) : undefined,
-  );
-
-  // road edge lines (neon cyan / magenta) + dashed centre line (gold)
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_CYAN, roadColor), 0.07 + roadColor * 0.45);
-  ctx.beginPath();
-  for (let i = 0; i <= SAMPLES; i++) {
-    const [lx, ly] = ground(i / SAMPLES, -ROAD_HALF);
-    if (i === 0) ctx.moveTo(lx, ly);
-    else ctx.lineTo(lx, ly);
-  }
-  ctx.stroke();
-  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_MAGENTA, roadColor), 0.07 + roadColor * 0.45);
-  ctx.beginPath();
-  for (let i = 0; i <= SAMPLES; i++) {
-    const [rx, ry] = ground(i / SAMPLES, ROAD_HALF);
-    if (i === 0) ctx.moveTo(rx, ry);
-    else ctx.lineTo(rx, ry);
-  }
-  ctx.stroke();
-  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_GOLD, roadColor), 0.16 + roadColor * 0.5);
+  // dashed gold centre line
+  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_GOLD, duskF), 0.18 + duskF * 0.4);
   const DASH = 44;
-  for (let i = 0; i < DASH; i += 2) {
-    line(ground(i / DASH, 0), ground((i + 1) / DASH, 0));
-  }
+  for (let i = 0; i < DASH; i += 2) line(ground(i / DASH, 0), ground((i + 1) / DASH, 0));
 
-  // --- render list: buildings + car, painter-sorted far -> near ------------
-  type Item =
-    | { d: number; kind: "building"; b: Building }
-    | { d: number; kind: "car" };
-
-  // Car depth mapping. ISO (angle 0): the car drives TOWARD the camera. SIDE
-  // (angle 1): it drives rightward toward the home (large d = right), so we
-  // blend its DRAWN depth from carD to a forward-moving side depth. carDraw ==
-  // carD at angle 0 (D2a identical).
-  //
-  // D4: phased journey pacing. Car advances down the road in beats synced to
-  // the bend + camera rotation, instead of a constant linear crawl.
-  //   0.00-0.40 : far -> mid (approaching down the straight, iso)
-  //   0.40-0.60 : mid -> bend point (the right curve, camera starts rotating)
-  //   0.60-1.00 : bend -> near/home handoff
-  // roadPos 0 = far(d=1), 1 = near(d=0). Piecewise-eased so each beat reads.
-  const roadPos =
-    progress < 0.4
-      ? smoothstep(0.0, 0.4, progress) * 0.62 // first stretch — car comes well forward by ~act 2
-      : progress < 0.6
-        ? 0.62 + smoothstep(0.4, 0.6, progress) * 0.18 // through the bend
-        : 0.8 + smoothstep(0.6, 1.0, progress) * 0.2; // bend -> home
-  const carD = 1 - roadPos;
-  const carSideD = lerp(0.25, 0.9, progress); // ends just left of the home
-  const carDraw = lerp(carD, carSideD, cameraAngle);
-
-  const items: Item[] = CITY.map((b) => ({ d: b.d, kind: "building", b }));
-  items.push({ d: carDraw, kind: "car" });
-  items.sort((p, q) => q.d - p.d); // farthest first (drawn behind)
+  // buildings + car, painter-sorted far->near. Car comes TOWARD camera and
+  // grows; foreground buildings fade so they never occlude it. Car stays noir
+  // (no gold yet — gold belongs to the arrival in the side act).
+  // car advances down the road, reaching mid-road by ~act 2 then close by act 3
+  const carAdvance = Math.pow(t, 0.7); // front-loaded — car comes forward early
+  const carD = 1 - carAdvance * 0.95; // 1 (far) -> ~0.05 (near)
+  type Item = { d: number; b?: Building };
+  const items: Item[] = CITY.map((b) => ({ d: b.d, b }));
+  items.push({ d: carD });
+  items.sort((p, q) => q.d - p.d);
 
   for (const it of items) {
-    if (it.kind === "car") {
-      // headlight cones — point in the direction of travel: toward the camera
-      // (smaller d) in iso, toward the home (larger d) in side view.
-      const dFoff = lerp(-0.28, 0.3, cameraAngle);
-      const dF = Math.min(Math.max(carDraw + dFoff, 0), 1);
+    if (!it.b) {
+      const grow = lerp(1.0, 2.2, smoothstep(0.0, 1.0, t));
       for (const lamp of [-0.3, 0.3] as const) {
-        const apex = ground(carDraw, lamp);
-        apex[1] -= lanePx * sceneScale(carDraw) * 0.3; // lift to lamp height
-        const left = ground(dF, lamp - 0.85);
-        const right = ground(dF, lamp + 0.85);
-        const beam = ctx.createLinearGradient(
-          apex[0],
-          apex[1],
-          (left[0] + right[0]) / 2,
-          (left[1] + right[1]) / 2,
-        );
-        // headlights warm toward amber as the car gains colour
-        const beamCol = mix(C_BONE, C_AMBER, carColor * 0.7);
-        beam.addColorStop(0, rgbaStr(beamCol, 0.3 + wetness * 0.05));
-        beam.addColorStop(1, rgbaStr(beamCol, 0));
+        const apex = ground(carD, lamp);
+        apex[1] -= lanePx * sceneScale(carD) * 0.3;
+        const left = ground(Math.max(carD - 0.28, 0), lamp - 0.85);
+        const right = ground(Math.max(carD - 0.28, 0), lamp + 0.85);
+        const beam = ctx.createLinearGradient(apex[0], apex[1], (left[0] + right[0]) / 2, (left[1] + right[1]) / 2);
+        beam.addColorStop(0, rgbaStr(C_BONE, 0.34));
+        beam.addColorStop(1, rgbaStr(C_BONE, 0));
         ctx.fillStyle = beam;
         poly([apex, left, right]);
       }
-      // car body — noir grey -> signature gold as carColor rises. Footprint
-      // widens / height drops with cameraAngle so the flattened box reads as a
-      // wide car profile (not a tall block) in the side view.
-      drawIsoBox(
-        carDraw,
-        0,
-        lerp(0.85, 2.4, cameraAngle) * lerp(1.0, 1.7, roadPos), // grows as it nears in iso
-        lerp(1.2, 0.7, cameraAngle) * lerp(1.0, 1.4, roadPos),
-        (m) => {
-          const val = 7 * m + 2;
-          const noir: RGB = [val, val, val + 1];
-          const gold: RGB = [C_GOLD[0] * m, C_GOLD[1] * m, C_GOLD[2] * m];
-          return rgbStr(mix(noir, gold, carColor));
-        },
-        rgbaStr(mix(C_BONE, C_GOLD, carColor), 0.26 + carColor * 0.2),
-      );
+      drawIsoBox(carD, 0, 0.85 * grow, 1.2 * grow, (m) => {
+        const v = 8 * m + 3;
+        return rgbStr([v, v, v + 1]);
+      }, rgbaStr(C_BONE, 0.3));
       continue;
     }
-
     const b = it.b;
-    // Foreground buildings fade out as the car comes toward the camera, so they
-    // don't occlude it. Nearest (b.d ~ 0) fade most; mid/far stay opaque. At
-    // progress 0 nothing fades (identical to D2b).
     const foreFade = 1 - smoothstep(0.0, 0.18, b.d);
-    const nearPass = smoothstep(0.15, 0.55, progress);
-    const buildingAlpha = 1 - foreFade * nearPass;
-    if (buildingAlpha <= 0.02) continue; // fully faded — skip rendering
-    const dim = 0.5 + (1 - b.d) * 0.5; // foreground brighter, horizon dimmer
+    const nearPass = smoothstep(0.15, 0.6, t);
+    const a = 1 - foreFade * nearPass;
+    if (a <= 0.02) continue;
+    const dim = 0.5 + (1 - b.d) * 0.5;
     const neon = NEON[b.neon];
-    // windows light during beat 3, scattered per-building by litOffset.
     const winAlpha = Math.min(1, Math.max(0, cityColor * 1.5 - b.litOffset * 0.6));
-    const faded = buildingAlpha < 1;
+    const faded = a < 1;
     if (faded) {
       ctx.save();
-      ctx.globalAlpha = buildingAlpha;
+      ctx.globalAlpha = a;
     }
-    drawIsoBox(
-      b.d,
-      b.v,
-      b.footW,
-      b.h,
-      (m) => {
-        const g = b.tone * dim * m;
-        const noir: RGB = [g, g, g];
-        const warm: RGB = [g * 1.18, g * 1.02, g * 0.82]; // subtle warmth
-        return rgbStr(mix(noir, warm, cityColor));
-      },
-      rgbaStr(mix(C_BONE, neon, cityColor * 0.5), 0.05 + (1 - b.d) * 0.08 + cityColor * 0.1),
-      b.windows,
-      winAlpha > 0.02 ? rgbaStr(neon, 0.35 + winAlpha * 0.6) : undefined,
-    );
+    drawIsoBox(b.d, b.v, b.footW, b.h, (m) => {
+      const g = b.tone * dim * m;
+      return rgbStr(mix([g, g, g], [g * 1.18, g * 1.02, g * 0.82], cityColor));
+    }, rgbaStr(mix(C_BONE, neon, cityColor * 0.5), 0.05 + (1 - b.d) * 0.08 + cityColor * 0.1),
+      b.windows, winAlpha > 0.02 ? rgbaStr(neon, 0.35 + winAlpha * 0.6) : undefined);
     if (faded) ctx.restore();
   }
 
-  // --- rain — heavy (beat 1) -> drizzle -> stopped (beat 4) ----------------
+  // rain (heavy -> gone)
   if (rainAmount > 0.01) {
-    const slant = 0.16;
     ctx.strokeStyle = rgbaStr(C_BONE, 0.1 * rainAmount);
     ctx.lineWidth = 1;
     ctx.beginPath();
     const count = Math.ceil(RAIN.length * rainAmount);
     for (let i = 0; i < count; i++) {
       const s = RAIN[i];
-      const yy = ((s.y + progress * 1.1) % 1) * height;
+      const yy = ((s.y + t * 1.1) % 1) * height;
       const xx = s.x * width;
       const L = s.len * height;
       ctx.moveTo(xx, yy);
-      ctx.lineTo(xx - L * slant, yy + L);
+      ctx.lineTo(xx - L * 0.16, yy + L);
     }
     ctx.stroke();
   }
 
-  // --- vignette — heavy noir frame that lightens toward full colour --------
-  const vigAlpha = 0.7 - 0.45 * dawnF;
-  const vg = ctx.createRadialGradient(
-    width / 2,
-    height * 0.55,
-    Math.min(width, height) * 0.2,
-    width / 2,
-    height * 0.55,
-    Math.max(width, height) * 0.75,
-  );
-  vg.addColorStop(0, "rgba(10, 10, 10, 0)");
-  vg.addColorStop(1, rgbaStr(C_INK, vigAlpha));
+  // vignette
+  const vg = ctx.createRadialGradient(width / 2, height * 0.55, Math.min(width, height) * 0.2, width / 2, height * 0.55, Math.max(width, height) * 0.75);
+  vg.addColorStop(0, "rgba(10,10,10,0)");
+  vg.addColorStop(1, rgbaStr(C_INK, 0.7 - 0.25 * duskF));
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, width, height);
+}
+
+// ---------------------------------------------------------------------------
+// ACTS 4-5 — flat side profile (the arrival). `t` is local 0..1 (global
+// CUT..1). This is the clean composition from drawCameraB, driven by t so the
+// car pulls toward home and the sky goes full dawn. No iso geometry here.
+// ---------------------------------------------------------------------------
+function drawSideAct(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  width: number,
+  height: number,
+): void {
+  drawCameraB(ctx, lerp(0.78, 1.0, t), width, height);
 }
 
 /**
@@ -903,6 +711,39 @@ function bandOpacity(p: number, start: number, end: number): number {
   return Math.min(fadeIn, fadeOut);
 }
 
+/**
+ * Progress WITHIN a chapter band [start,end], 0..1. Drives the typewriter so
+ * text reveals as you scroll deeper into the band and un-reveals on scroll-up.
+ */
+function bandProgress(p: number, start: number, end: number): number {
+  return clamp01((p - start) / (end - start));
+}
+
+/**
+ * Scroll-driven typewriter: reveals the first `reveal*length` chars of `text`.
+ * A blinking caret trails the revealed slice while it is mid-typing. Pure
+ * function of scroll progress — deterministic, reversible, no timers.
+ */
+function Typewriter({
+  text,
+  reveal,
+  className,
+}: {
+  text: string;
+  reveal: number;
+  className?: string;
+}) {
+  const count = Math.round(clamp01(reveal) * text.length);
+  const shown = text.slice(0, count);
+  const typing = count > 0 && count < text.length;
+  return (
+    <span className={className}>
+      {shown}
+      {typing && <span className="ml-0.5 animate-pulse text-signal">|</span>}
+    </span>
+  );
+}
+
 // Shared overlay typography — scaled to sit IN the scene (not a pasted hero).
 const EYEBROW_CLS =
   "mb-5 font-accent text-base tracking-wide text-signal md:text-xl";
@@ -981,7 +822,7 @@ export function JourneySection() {
     const mm = gsap.matchMedia();
 
     mm.add("(prefers-reduced-motion: no-preference)", () => {
-      section.style.height = "400svh";
+      section.style.height = "900svh";
       sizeCanvas();
       render(0);
 
@@ -1051,6 +892,13 @@ export function JourneySection() {
   const op3 = bandOpacity(progress, 0.42, 0.6); // ACT3 rising action (engine)
   const op4 = bandOpacity(progress, 0.66, 0.82); // ACT4 climax (proof)
   const op5 = bandOpacity(progress, 0.86, 1.0); // ACT5 resolution (operators)
+  // Typewriter reveal per chapter — wide bands so text writes slowly as you
+  // scroll through almost the entire chapter window (cinematic, deliberate).
+  const tw1 = bandProgress(progress, 0.0, 0.15);
+  const tw2 = bandProgress(progress, 0.18, 0.37);
+  const tw3 = bandProgress(progress, 0.4, 0.6);
+  const tw4 = bandProgress(progress, 0.64, 0.83);
+  const tw5 = bandProgress(progress, 0.85, 1.0);
   const openConsole = () => setConsoleOpen(true);
 
   return (
@@ -1077,13 +925,11 @@ export function JourneySection() {
           <Chapter opacity={op1}>
             <p className={EYEBROW_CLS}>{STORY_EYEBROW}</p>
             <h1 className="font-display-black text-4xl leading-[0.95] text-bone md:text-6xl">
-              {HERO_TITLE_LINES.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
+              <Typewriter text={HERO_TITLE_LINES.join(" ")} reveal={tw1} />
             </h1>
-            <p className={BODY_CLS}>{STORY_BRIDGE}</p>
+            <p className={BODY_CLS}>
+              <Typewriter text={STORY_BRIDGE} reveal={tw1} />
+            </p>
             <button
               type="button"
               onClick={openConsole}
@@ -1097,28 +943,45 @@ export function JourneySection() {
           {/* CH2 — the studio / manifest */}
           <Chapter opacity={op2}>
             <p className={EYEBROW_CLS}>{MANIFEST_EYEBROW}</p>
-            <h2 className={HEADLINE_CLS}>{MANIFEST_HEADLINE}</h2>
-            <p className={BODY_CLS}>{MANIFEST_BODY}</p>
+            <h2 className={HEADLINE_CLS}>
+              <Typewriter text={MANIFEST_HEADLINE} reveal={tw2} />
+            </h2>
+            <p className={BODY_CLS}>
+              <Typewriter text={MANIFEST_BODY} reveal={tw2} />
+            </p>
           </Chapter>
 
           {/* CH3 — the engine */}
           <Chapter opacity={op3}>
             <p className={EYEBROW_CLS}>{ENGINE_EYEBROW}</p>
-            <h2 className={HEADLINE_CLS}>{ENGINE_HEADLINE}</h2>
-            <p className={BODY_CLS}>{ENGINE_BODY}</p>
+            <h2 className={HEADLINE_CLS}>
+              <Typewriter text={ENGINE_HEADLINE} reveal={tw3} />
+            </h2>
+            <p className={BODY_CLS}>
+              <Typewriter text={ENGINE_BODY} reveal={tw3} />
+            </p>
           </Chapter>
 
           {/* CH4 — proof (text only; FerdiPoker media lands later) */}
           <Chapter opacity={op4}>
             <p className={EYEBROW_CLS}>{PROOF_EYEBROW}</p>
-            <h2 className={HEADLINE_CLS}>{PROOF_HEADLINE}</h2>
+            <h2 className={HEADLINE_CLS}>
+              <Typewriter text={PROOF_HEADLINE} reveal={tw4} />
+            </h2>
+            <p className={BODY_CLS}>
+              <Typewriter text={PROOF_BODY} reveal={tw4} />
+            </p>
           </Chapter>
 
           {/* CH5 — operators + final CTA */}
           <Chapter opacity={op5}>
             <p className={EYEBROW_CLS}>{OPERATOR_EYEBROW}</p>
-            <h2 className={HEADLINE_CLS}>{OPERATOR_HEADLINE}</h2>
-            <p className={BODY_CLS}>{OPERATOR_BODY}</p>
+            <h2 className={HEADLINE_CLS}>
+              <Typewriter text={OPERATOR_HEADLINE} reveal={tw5} />
+            </h2>
+            <p className={BODY_CLS}>
+              <Typewriter text={OPERATOR_BODY} reveal={tw5} />
+            </p>
             <button
               type="button"
               onClick={openConsole}

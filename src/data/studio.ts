@@ -3,24 +3,42 @@
  * place (the gallery overlay panels AND the ACT-2 scroll story). Keeping it here
  * guarantees the panel and the story can never drift apart.
  *
- * Strings below are byte-for-byte the user-facing copy already shipped in
- * OverlayPanels.tsx / the hero overlay. Do not rewrite — only the page that
- * renders them may change.
+ * Strings below are the user-facing copy. The 5-act noir story (cinematic
+ * voice, written for the scroll-driven landing journey) lives here verbatim —
+ * the page that renders them may change, the words may not.
  */
 import type { ProjectCategory } from "@/data/projects";
 
-// ── Hero (mirrors GalleryExperience hero overlay) ────────────────────────────
-export const HERO_TITLE_LINES = ["YOU THINK IT.", "WE SHADE IT INTO REALITY."] as const;
+// ── ACT 1 — OUT OF THE SHADOWS (hero / opener) ───────────────────────────────
+export const HERO_TITLE_LINES = ["YOU THINK IT.", "WE DRIVE IT INTO REALITY."] as const;
 
-// ── THE ENGINE (mirrors EnginePanel) ─────────────────────────────────────────
+export const STORY_EYEBROW = "OUT OF THE SHADOWS";
+
+export const STORY_BRIDGE =
+  "Somewhere in the rain, there's an idea refusing to die. It sits in the " +
+  "dark, engine cold, waiting for someone willing to turn the key. We take " +
+  "what exists only in your head and give it shape, weight, motion. Then we " +
+  "drive it all the way into daylight.";
+
+// ── ACT 2 — THE STUDIO (manifest) ────────────────────────────────────────────
+export const MANIFEST_EYEBROW = "THE STUDIO";
+export const MANIFEST_HEADLINE = "BUILT SMALL. BUILT TO MOVE.";
+export const MANIFEST_BODY =
+  "ShadeWorks is a software studio founded on the belief that execution beats " +
+  "discussion. We build custom software, business control panels, and " +
+  "marketing pipelines from nothing but a problem worth solving. No templates. " +
+  "No theatre. Just real systems, built at a pace most teams mistake for " +
+  "impossible.";
+
+// ── ACT 3 — THE ENGINE ───────────────────────────────────────────────────────
 export const ENGINE_EYEBROW = "THE ENGINE";
-export const ENGINE_HEADLINE = "80% FASTER DEPLOYMENT. ZERO TEMPLATES. EVER.";
+export const ENGINE_HEADLINE = "MACHINE SPEED CHANGES THE ROAD.";
 export const ENGINE_BODY =
-  "Shade Works runs a coordinated swarm of specialized AI agents — each one " +
-  "trained to architect, code, test, and deploy. They work in parallel. They " +
-  "don't sleep. They don't make the same mistake twice. What takes " +
-  "agencies 6 months ships in 6 weeks. What takes developers 3 sprints ships " +
-  "in 3 days.";
+  "Behind every build is a coordinated swarm of specialist AI operators: " +
+  "architect, build, deploy. They work in parallel while the city sleeps, " +
+  "handing work to one another without pause. The result feels less like " +
+  "development and more like momentum. What takes agencies six months often " +
+  "lands in six weeks. What takes three sprints can arrive in three days.";
 
 export const ENGINE_AGENTS = [
   {
@@ -37,30 +55,29 @@ export const ENGINE_AGENTS = [
   },
 ] as const;
 
-// ── OPERATORS (mirrors OperatorsPanel) ───────────────────────────────────────
-export const OPERATOR_EYEBROW = "OPERATORS";
-export const OPERATOR_HEADLINE = "LOCK IN YOUR CONSULTATION.";
+// ── ACT 4 — THE PROOF ────────────────────────────────────────────────────────
+export const PROOF_EYEBROW = "THE PROOF";
+export const PROOF_HEADLINE = "THE RECEIPT IS THE SOFTWARE.";
+export const PROOF_BODY =
+  "Ideas are cheap. Shipping leaves fingerprints. FerdiPoker began as a " +
+  "concept and became a real platform built for serious MTT training. This is " +
+  "the moment the skyline changes color—the point where speculation ends and " +
+  "the product starts speaking for itself.";
+
+// ── ACT 5 — THE OPERATORS (+ CTA) ────────────────────────────────────────────
+export const OPERATOR_EYEBROW = "THE OPERATORS";
+export const OPERATOR_HEADLINE = "NOT EVERY MISSION MAKES THE LIST.";
 export const OPERATOR_BODY =
-  "Shade Works operates in limited capacity. We don't scale headcount — " +
-  "we scale output. Every engagement is deliberate, every client is vetted, " +
-  "and every build is treated like a mission, not a project.";
+  "We keep the studio deliberately small so the work stays sharp. Every " +
+  "client is vetted. Every build is treated like a mission with a " +
+  "destination, not a project with a deadline. If you're carrying something " +
+  "worth building, step into the car. We'll show you how far it can go.";
 
 export const OPERATOR_STEPS = [
   { step: "STEP 01", title: "SUBMIT YOUR BRIEF", desc: "Tell us what you want built. Raw, unfiltered, ambitious." },
   { step: "STEP 02", title: "SHADE ENGINE ANALYSIS", desc: "Technical breakdown within 48 hours." },
   { step: "STEP 03", title: "EXECUTION BEGINS", desc: "The swarm deploys. You watch it take shape." },
 ] as const;
-
-// ── ACT-2 connective copy (NEW — bridges between sections, studio tone) ───────
-export const STORY_EYEBROW = "SHADE WORKS // STUDIO";
-
-export const STORY_BRIDGE =
-  "A studio that builds custom software from nothing — at machine speed, no templates.";
-
-export const MANIFEST_EYEBROW = "// THE STUDIO";
-export const MANIFEST_HEADLINE = "BUILT FROM NOTHING.";
-export const MANIFEST_BODY =
-  "Small studio, machine-speed execution. Real production across three disciplines — not concepts, not slideware.";
 
 /** S2 — the three real capability tracks (order mirrors projects.ts categories). */
 export const CATEGORY_BLURBS: { category: ProjectCategory; blurb: string }[] = [
@@ -78,9 +95,7 @@ export const CATEGORY_BLURBS: { category: ProjectCategory; blurb: string }[] = [
   },
 ];
 
-export const PROOF_EYEBROW = "// PROOF";
-export const PROOF_HEADLINE = "WE SHIP. HERE'S THE RECEIPT.";
-
-export const CTA_EYEBROW = "// EXECUTE DESCENT";
+// ── CTA ───────────────────────────────────────────────────────────────────────
+export const CTA_EYEBROW = "// EXECUTE MISSION";
 export const CTA_HEADLINE = "YOU THINK IT.";
-export const CTA_HEADLINE_2 = "WE SHADE IT INTO REALITY.";
+export const CTA_HEADLINE_2 = "WE DRIVE IT INTO REALITY.";
