@@ -266,29 +266,41 @@ function drawIsoAct(
   width: number,
   height: number,
 ): void {
-  const cityColor = smoothstep(0.15, 0.85, t); // windows wake gradually from early
-  const duskF = smoothstep(0.45, 1.0, t); // sky lifts noir -> dusk by end of act 3
-  const rainAmount = 1 - smoothstep(0.2, 0.9, t);
-  const zoom = 1 + smoothstep(0.0, 1.0, t) * 0.5; // cinematic push-in across the approach
+  // Three distinct visual phases across acts 1-3 (t local 0..1):
+  //   PHASE A (t 0.00-0.30) ACT1 exposition — deep noir, heavy rain, car far,
+  //     headlights cutting fog. Maximum darkness, low camera.
+  //   PHASE B (t 0.30-0.65) ACT2 inciting — push-in between buildings, first
+  //     neon windows wake, car reaches mid-road. The city stirs.
+  //   PHASE C (t 0.65-1.00) ACT3 the engine — high-angle lift, buildings pulse
+  //     rhythmically, light-arteries stream between them (the agent swarm made
+  //     visible). The city becomes the machine.
+  const phaseA = 1 - smoothstep(0.0, 0.32, t); // 1 -> 0 over act 1
+  const phaseC = smoothstep(0.62, 1.0, t); // 0 -> 1 into act 3
+  const cityColor = smoothstep(0.22, 0.7, t); // neon windows wake mid-journey
+  const duskF = smoothstep(0.4, 1.0, t); // noir -> dusk by end of act 3
+  const rainAmount = phaseA; // rain owns act 1, gone by act 2
+  const zoom = 1 + smoothstep(0.0, 0.65, t) * 0.55; // push-in peaks entering act 3
+  const enginePulse = phaseC; // act-3 rhythmic energy strength
 
   const skyTop = mix(SKY_NOIR_TOP, SKY_DUSK_TOP, duskF);
   const skyBot = mix(SKY_NOIR_BOT, SKY_DUSK_BOT, duskF);
-  const asphalt = mix([22, 23, 26], [30, 27, 34], duskF * 0.6);
+  const asphalt = mix([18, 19, 22], [30, 27, 38], duskF * 0.7);
 
-  const horizonY = height * 0.26;
+  // Camera lifts to a higher angle in act 3 (the "engine" overhead feel):
+  // horizon rises, depth compresses slightly => more rooftops visible.
+  const horizonY = height * (0.26 + 0.1 * phaseC);
   const bottomY = height * 1.04;
   const lanePx = Math.max(20, width * 0.05);
 
-  const depthScale = (d: number): number => 1 / (1 + d * 5);
+  const depthScale = (d: number): number => 1 / (1 + d * (5 - 1.4 * phaseC));
   const sFar = depthScale(1);
   const yNorm = (d: number): number => (depthScale(d) - sFar) / (1 - sFar);
   const groundY = (d: number): number =>
     horizonY + (bottomY - horizonY) * yNorm(d);
-  // FIXED double-S serpentine — does NOT change shape on scroll (constant amp).
+  // FIXED double-S serpentine (constant amplitude — never morphs on scroll).
   const centerX = (d: number): number =>
     width * 0.5 + Math.sin(d * Math.PI * 2) * width * 0.22 * (1 - d);
 
-  // centered push-in helper
   const cx0 = width / 2;
   const cy0 = groundY(0);
   const pz = (x: number, y: number): [number, number] => [
@@ -320,7 +332,6 @@ function drawIsoAct(
     ctx.stroke();
   };
 
-  // iso extruded box (2:1 diamond + two faces + top), depth-scaled
   const drawIsoBox = (
     d: number,
     v: number,
@@ -365,7 +376,7 @@ function drawIsoAct(
     line(bBot, tBot);
   };
 
-  // sky + ground base
+  // --- sky -------------------------------------------------------------------
   ctx.fillStyle = rgbStr(mix(C_INK, [22, 22, 28], duskF));
   ctx.fillRect(0, 0, width, height);
   const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
@@ -375,13 +386,12 @@ function drawIsoAct(
   ctx.fillRect(0, 0, width, horizonY + 1);
 
   // distant skyline
-  const skyBase = horizonY;
   ctx.fillStyle = rgbStr(mix([17, 18, 21], [40, 44, 70], duskF));
   for (const tw of SKYLINE) {
-    ctx.fillRect(tw.x * width, skyBase - tw.h * height, tw.w * width, tw.h * height);
+    ctx.fillRect(tw.x * width, horizonY - tw.h * height, tw.w * width, tw.h * height);
   }
 
-  // road surface (fixed serpentine)
+  // --- road surface (fixed serpentine) --------------------------------------
   const SAMPLES = 60;
   ctx.fillStyle = rgbStr(asphalt);
   for (let i = 0; i < SAMPLES; i++) {
@@ -389,17 +399,34 @@ function drawIsoAct(
     const dB = (i + 1) / SAMPLES;
     poly([ground(dA, -ROAD_HALF), ground(dA, ROAD_HALF), ground(dB, ROAD_HALF), ground(dB, -ROAD_HALF)]);
   }
-  // dashed gold centre line
   ctx.strokeStyle = rgbaStr(mix(C_BONE, C_GOLD, duskF), 0.18 + duskF * 0.4);
   const DASH = 44;
   for (let i = 0; i < DASH; i += 2) line(ground(i / DASH, 0), ground((i + 1) / DASH, 0));
 
-  // buildings + car, painter-sorted far->near. Car comes TOWARD camera and
-  // grows; foreground buildings fade so they never occlude it. Car stays noir
-  // (no gold yet — gold belongs to the arrival in the side act).
-  // car advances down the road, reaching mid-road by ~act 2 then close by act 3
-  const carAdvance = Math.pow(t, 0.7); // front-loaded — car comes forward early
-  const carD = 1 - carAdvance * 0.95; // 1 (far) -> ~0.05 (near)
+  // --- ACT3 engine: light-arteries streaming along the road toward horizon ---
+  // Pulsing energy packets flowing up the centre line — the agent swarm made
+  // visible. Strength ramps in with phaseC; deterministic positions from t.
+  if (enginePulse > 0.01) {
+    const PACKETS = 22;
+    for (let i = 0; i < PACKETS; i++) {
+      const base = i / PACKETS;
+      const d = (base + (t * 0.6)) % 1; // flow toward horizon as you scroll
+      const side = i % 2 === 0 ? -1 : 1;
+      const lane = side * ROAD_HALF * 0.5;
+      const [x, y] = ground(d, lane);
+      const s = sceneScale(d);
+      const col = NEON[i % NEON.length];
+      const r = Math.max(1.5, 5 * s) * (0.6 + 0.4 * Math.sin(i + t * 12));
+      ctx.fillStyle = rgbaStr(col, 0.5 * enginePulse);
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // --- buildings + car, painter-sorted far -> near --------------------------
+  const carAdvance = Math.pow(t, 0.7);
+  const carD = 1 - carAdvance * 0.95;
   type Item = { d: number; b?: Building };
   const items: Item[] = CITY.map((b) => ({ d: b.d, b }));
   items.push({ d: carD });
@@ -408,13 +435,15 @@ function drawIsoAct(
   for (const it of items) {
     if (!it.b) {
       const grow = lerp(1.0, 2.2, smoothstep(0.0, 1.0, t));
+      // headlight beams strongest in act 1 (fog), fading as the city lights up
+      const beamA = 0.34 * (0.4 + 0.6 * phaseA);
       for (const lamp of [-0.3, 0.3] as const) {
         const apex = ground(carD, lamp);
         apex[1] -= lanePx * sceneScale(carD) * 0.3;
         const left = ground(Math.max(carD - 0.28, 0), lamp - 0.85);
         const right = ground(Math.max(carD - 0.28, 0), lamp + 0.85);
         const beam = ctx.createLinearGradient(apex[0], apex[1], (left[0] + right[0]) / 2, (left[1] + right[1]) / 2);
-        beam.addColorStop(0, rgbaStr(C_BONE, 0.34));
+        beam.addColorStop(0, rgbaStr(C_BONE, beamA));
         beam.addColorStop(1, rgbaStr(C_BONE, 0));
         ctx.fillStyle = beam;
         poly([apex, left, right]);
@@ -432,7 +461,9 @@ function drawIsoAct(
     if (a <= 0.02) continue;
     const dim = 0.5 + (1 - b.d) * 0.5;
     const neon = NEON[b.neon];
-    const winAlpha = Math.min(1, Math.max(0, cityColor * 1.5 - b.litOffset * 0.6));
+    // windows wake gradually; in act 3 they PULSE rhythmically (engine beat)
+    const pulse = 1 + enginePulse * 0.5 * Math.sin(t * 16 + b.litOffset * 6.28);
+    const winAlpha = Math.min(1, Math.max(0, cityColor * 1.5 - b.litOffset * 0.6)) * pulse;
     const faded = a < 1;
     if (faded) {
       ctx.save();
@@ -442,13 +473,13 @@ function drawIsoAct(
       const g = b.tone * dim * m;
       return rgbStr(mix([g, g, g], [g * 1.18, g * 1.02, g * 0.82], cityColor));
     }, rgbaStr(mix(C_BONE, neon, cityColor * 0.5), 0.05 + (1 - b.d) * 0.08 + cityColor * 0.1),
-      b.windows, winAlpha > 0.02 ? rgbaStr(neon, 0.35 + winAlpha * 0.6) : undefined);
+      b.windows, winAlpha > 0.02 ? rgbaStr(neon, 0.3 + Math.min(0.65, winAlpha * 0.6)) : undefined);
     if (faded) ctx.restore();
   }
 
-  // rain (heavy -> gone)
+  // --- rain (act 1 only) ----------------------------------------------------
   if (rainAmount > 0.01) {
-    ctx.strokeStyle = rgbaStr(C_BONE, 0.1 * rainAmount);
+    ctx.strokeStyle = rgbaStr(C_BONE, 0.12 * rainAmount);
     ctx.lineWidth = 1;
     ctx.beginPath();
     const count = Math.ceil(RAIN.length * rainAmount);
@@ -463,10 +494,10 @@ function drawIsoAct(
     ctx.stroke();
   }
 
-  // vignette
+  // --- vignette (heavy in act 1, lifts toward act 3) ------------------------
   const vg = ctx.createRadialGradient(width / 2, height * 0.55, Math.min(width, height) * 0.2, width / 2, height * 0.55, Math.max(width, height) * 0.75);
   vg.addColorStop(0, "rgba(10,10,10,0)");
-  vg.addColorStop(1, rgbaStr(C_INK, 0.7 - 0.25 * duskF));
+  vg.addColorStop(1, rgbaStr(C_INK, 0.78 * phaseA + 0.35 * (1 - phaseA) - 0.12 * phaseC));
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, width, height);
 }
