@@ -229,6 +229,16 @@ const SKYLINE = buildSkyline();
 const RAIN = buildRain();
 const SIDE_CITY = buildSideCity();
 
+// Deterministic film-grain dots (positions fixed; alpha pulses per frame via t).
+interface Grain { x: number; y: number; }
+function buildGrain(): Grain[] {
+  const rng = mulberry32(0x6a17);
+  const list: Grain[] = [];
+  for (let i = 0; i < 420; i++) list.push({ x: rng(), y: rng() });
+  return list;
+}
+const GRAIN = buildGrain();
+
 function drawCameraA(
   ctx: CanvasRenderingContext2D,
   progress: number,
@@ -714,13 +724,54 @@ function drawCameraB(
  * dual-camera dissolve was removed in D1: drawCameraB stays defined but unused
  * for now. // D2: reintegrated as rotated camera target
  */
+/**
+ * Frame orchestrator — draws the act, then layers cinematic post-process:
+ * a hard-cut dip-to-black around CUT, a per-act colour grade wash, and subtle
+ * film grain (fullscreen, no letterbox). All deterministic from `progress`.
+ */
 function draw(
   ctx: CanvasRenderingContext2D,
   progress: number,
   width: number,
   height: number,
 ): void {
+  const CUT = 0.62;
+
   drawCameraA(ctx, progress, width, height);
+
+  // --- colour-grade wash: cool noir -> warm dawn across the journey --------
+  // Two overlapping washes keyed to progress; very low alpha so it tints,
+  // never floods. Cool teal early, warm amber late.
+  const coolF = 1 - smoothstep(0.0, CUT, progress);
+  const warmF = smoothstep(CUT, 1.0, progress);
+  if (coolF > 0.01) {
+    ctx.fillStyle = rgbaStr([20, 40, 70], 0.12 * coolF); // teal noir grade
+    ctx.fillRect(0, 0, width, height);
+  }
+  if (warmF > 0.01) {
+    ctx.fillStyle = rgbaStr([255, 170, 90], 0.1 * warmF); // amber dawn grade
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // --- hard-cut dip to black: brief blackout right around CUT --------------
+  // Bell curve centred on CUT (half-width 0.03): scene dips to near-black and
+  // back, so the iso->side jump reads as a deliberate film cut, not a glitch.
+  const cutDist = Math.abs(progress - CUT);
+  if (cutDist < 0.035) {
+    const dip = 1 - smoothstep(0.0, 0.035, cutDist); // 1 at CUT -> 0 at edges
+    ctx.fillStyle = rgbaStr(C_INK, dip * 0.96);
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // --- film grain: subtle moving dots --------------------------------------
+  const gt = Math.floor(progress * 240); // changes as you scroll => "alive"
+  ctx.fillStyle = rgbaStr(C_BONE, 0.035);
+  for (let i = 0; i < GRAIN.length; i++) {
+    const g = GRAIN[i];
+    const jx = ((g.x + ((i * 73 + gt * 37) % 100) / 100) % 1) * width;
+    const jy = ((g.y + ((i * 31 + gt * 53) % 100) / 100) % 1) * height;
+    ctx.fillRect(jx, jy, 1, 1);
+  }
 }
 
 // ---------------------------------------------------------------------------

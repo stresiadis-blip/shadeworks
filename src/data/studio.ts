@@ -1,44 +1,50 @@
 /**
  * Studio copy — single source of truth for text that appears in MORE than one
- * place (the gallery overlay panels AND the ACT-2 scroll story). Keeping it here
+ * place (the gallery overlay panels AND the scroll story). Keeping it here
  * guarantees the panel and the story can never drift apart.
  *
- * Strings below are the user-facing copy. The 5-act noir story (cinematic
- * voice, written for the scroll-driven landing journey) lives here verbatim —
- * the page that renders them may change, the words may not.
+ * The 5-act landing story is written as a late-night radio ad that finds a
+ * tired driver on his way home: it names his exhaustion, then sells him a way
+ * out — systems, scale, an easier life — until the sun finally rises on his
+ * street. Cinematic noir voice, second person, it speaks directly to YOU.
+ * The page that renders these may change; the words may not.
  */
 import type { ProjectCategory } from "@/data/projects";
 
-// ── ACT 1 — OUT OF THE SHADOWS (hero / opener) ───────────────────────────────
-export const HERO_TITLE_LINES = ["YOU THINK IT.", "WE DRIVE IT INTO REALITY."] as const;
+// ── ACT 1 — THE DRIVE HOME (hero / opener) ───────────────────────────────────
+// Night, rain, the long road back from another exhausting trip. Ideas you
+// can't finish sit heavy in the passenger seat. Then the radio finds you.
+export const HERO_TITLE_LINES = ["LONG DAY.", "LONGER ROAD HOME."] as const;
 
-export const STORY_EYEBROW = "OUT OF THE SHADOWS";
+export const STORY_EYEBROW = "ON THE ROAD // LATE";
 
 export const STORY_BRIDGE =
-  "Somewhere in the rain, there's an idea refusing to die. It sits in the " +
-  "dark, engine cold, waiting for someone willing to turn the key. We take " +
-  "what exists only in your head and give it shape, weight, motion. Then we " +
-  "drive it all the way into daylight.";
+  "Another trip done. The rain won't quit, the wipers keep time, and your head " +
+  "is full of ideas you never have time to finish. Then the radio cuts " +
+  "through the dark — and for once, it's talking to you.";
 
-// ── ACT 2 — THE STUDIO (manifest) ────────────────────────────────────────────
-export const MANIFEST_EYEBROW = "THE STUDIO";
-export const MANIFEST_HEADLINE = "BUILT SMALL. BUILT TO MOVE.";
+// ── ACT 2 — THE STUDIO ON THE RADIO ──────────────────────────────────────────
+// The ad introduces itself. Calm, sure of itself. We build the systems you
+// keep meaning to build but never get to.
+export const MANIFEST_EYEBROW = "// THE VOICE ON THE RADIO";
+export const MANIFEST_HEADLINE = "YOU RUN IT ALL ALONE. YOU DON'T HAVE TO.";
 export const MANIFEST_BODY =
-  "ShadeWorks is a software studio founded on the belief that execution beats " +
-  "discussion. We build custom software, business control panels, and " +
-  "marketing pipelines from nothing but a problem worth solving. No templates. " +
-  "No theatre. Just real systems, built at a pace most teams mistake for " +
-  "impossible.";
+  "This is ShadeWorks. We build the software, the control panels, and the " +
+  "systems that carry the weight you've been carrying by hand. Custom-built " +
+  "around your business — not templates, not theory. The stuff you keep " +
+  "promising yourself you'll set up one day. We set it up.";
 
-// ── ACT 3 — THE ENGINE ───────────────────────────────────────────────────────
-export const ENGINE_EYEBROW = "THE ENGINE";
-export const ENGINE_HEADLINE = "MACHINE SPEED CHANGES THE ROAD.";
+// ── ACT 3 — HOW IT WORKS (the engine) ─────────────────────────────────────────
+// The ad explains the magic: a team that works together, around the clock,
+// so the work that buries you gets done while you sleep.
+export const ENGINE_EYEBROW = "// HOW WE WORK";
+export const ENGINE_HEADLINE = "A TEAM THAT NEVER SLEEPS, WORKING AS ONE.";
 export const ENGINE_BODY =
-  "Behind every build is a coordinated swarm of specialist AI operators: " +
-  "architect, build, deploy. They work in parallel while the city sleeps, " +
-  "handing work to one another without pause. The result feels less like " +
-  "development and more like momentum. What takes agencies six months often " +
-  "lands in six weeks. What takes three sprints can arrive in three days.";
+  "Behind ShadeWorks is a coordinated crew of specialist AI operators — one " +
+  "designs it, one builds it, one ships it. They hand the work to each other " +
+  "without pause, covering for each other, moving while the city sleeps. What " +
+  "buries an agency for six months lands in six weeks. What costs you every " +
+  "evening gets done before morning.";
 
 export const ENGINE_AGENTS = [
   {
@@ -55,28 +61,32 @@ export const ENGINE_AGENTS = [
   },
 ] as const;
 
-// ── ACT 4 — THE PROOF ────────────────────────────────────────────────────────
-export const PROOF_EYEBROW = "THE PROOF";
-export const PROOF_HEADLINE = "THE RECEIPT IS THE SOFTWARE.";
+// ── ACT 4 — THE PROOF (the sky changes color) ─────────────────────────────────
+// You almost don't believe it. So the ad gives you proof — something real,
+// already built, already running. The moment doubt starts to lift.
+export const PROOF_EYEBROW = "// PROOF, NOT PROMISES";
+export const PROOF_HEADLINE = "WE'VE DONE IT BEFORE. HERE'S THE RECEIPT.";
 export const PROOF_BODY =
-  "Ideas are cheap. Shipping leaves fingerprints. FerdiPoker began as a " +
-  "concept and became a real platform built for serious MTT training. This is " +
-  "the moment the skyline changes color—the point where speculation ends and " +
-  "the product starts speaking for itself.";
+  "Talk is cheap; shipping leaves a mark. FerdiPoker started as one person's " +
+  "idea and became a real platform people train on every day. That's the " +
+  "moment the sky starts to change color — when an idea you carried alone " +
+  "turns into something that runs without you.";
 
-// ── ACT 5 — THE OPERATORS (+ CTA) ────────────────────────────────────────────
-export const OPERATOR_EYEBROW = "THE OPERATORS";
-export const OPERATOR_HEADLINE = "NOT EVERY MISSION MAKES THE LIST.";
+// ── ACT 5 — SUNRISE ON YOUR STREET (operators + CTA) ──────────────────────────
+// You pull into your street. The sun comes up. The ad makes its offer: bring
+// us what you've been carrying, and we'll show you how far it can go.
+export const OPERATOR_EYEBROW = "// PULLING INTO YOUR STREET";
+export const OPERATOR_HEADLINE = "BRING THE IDEA. WE'LL MAKE THE SUN RISE.";
 export const OPERATOR_BODY =
-  "We keep the studio deliberately small so the work stays sharp. Every " +
-  "client is vetted. Every build is treated like a mission with a " +
-  "destination, not a project with a deadline. If you're carrying something " +
-  "worth building, step into the car. We'll show you how far it can go.";
+  "We keep the studio small on purpose, so every build gets our full weight. " +
+  "Every client is chosen, every project treated like it matters — because to " +
+  "you, it does. You've carried it far enough alone. Pull in, hand it over, " +
+  "and watch the morning break over your street.";
 
 export const OPERATOR_STEPS = [
-  { step: "STEP 01", title: "SUBMIT YOUR BRIEF", desc: "Tell us what you want built. Raw, unfiltered, ambitious." },
-  { step: "STEP 02", title: "SHADE ENGINE ANALYSIS", desc: "Technical breakdown within 48 hours." },
-  { step: "STEP 03", title: "EXECUTION BEGINS", desc: "The swarm deploys. You watch it take shape." },
+  { step: "STEP 01", title: "TELL US THE IDEA", desc: "The one you keep meaning to build. Raw, unfiltered, ambitious." },
+  { step: "STEP 02", title: "WE MAP THE SYSTEM", desc: "A technical breakdown of how it gets built — within 48 hours." },
+  { step: "STEP 03", title: "THE WORK BEGINS", desc: "The crew deploys. You finally watch it take shape." },
 ] as const;
 
 /** S2 — the three real capability tracks (order mirrors projects.ts categories). */
@@ -96,6 +106,6 @@ export const CATEGORY_BLURBS: { category: ProjectCategory; blurb: string }[] = [
 ];
 
 // ── CTA ───────────────────────────────────────────────────────────────────────
-export const CTA_EYEBROW = "// EXECUTE MISSION";
-export const CTA_HEADLINE = "YOU THINK IT.";
-export const CTA_HEADLINE_2 = "WE DRIVE IT INTO REALITY.";
+export const CTA_EYEBROW = "// PULL IN";
+export const CTA_HEADLINE = "BRING THE IDEA.";
+export const CTA_HEADLINE_2 = "WE'LL MAKE THE SUN RISE.";
