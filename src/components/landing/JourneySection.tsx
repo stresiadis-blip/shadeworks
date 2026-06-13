@@ -65,6 +65,7 @@ const C_GOLD: RGB = [255, 212, 0]; // car signature + warm accents
 const C_CYAN: RGB = [0, 229, 255];
 const C_MAGENTA: RGB = [255, 46, 196];
 const C_AMBER: RGB = [255, 196, 120];
+const C_CRIMSON: RGB = [209, 31, 42]; // brand crimson — used sparingly
 const C_INK: RGB = [10, 10, 10];
 const NEON: RGB[] = [
   [0, 229, 255], // cyan
@@ -197,9 +198,35 @@ function buildRain(): Streak[] {
   return list;
 }
 
+/** A flat side-elevation building for CAMERA B's background skyline. */
+interface SideBuilding {
+  x: number; // 0..1 fraction of width
+  w: number; // 0..1 fraction of width
+  h: number; // 0..1 fraction of height
+  cols: number; // window grid
+  rows: number;
+}
+
+/** Deterministic side-elevation skyline behind the arrival scene. */
+function buildSideCity(): SideBuilding[] {
+  const rng = mulberry32(0xc0de);
+  const list: SideBuilding[] = [];
+  for (let i = 0; i < 11; i++) {
+    list.push({
+      x: i / 11 + rng() * 0.02,
+      w: 0.05 + rng() * 0.05,
+      h: 0.12 + rng() * 0.26,
+      cols: 2 + Math.floor(rng() * 3),
+      rows: 3 + Math.floor(rng() * 5),
+    });
+  }
+  return list;
+}
+
 const CITY = buildCity();
 const SKYLINE = buildSkyline();
 const RAIN = buildRain();
+const SIDE_CITY = buildSideCity();
 
 /**
  * COMMIT B — the isometric noir city as a cinematic film frame. Fully
@@ -213,8 +240,11 @@ const RAIN = buildRain();
  *
  * width/height are CSS pixels — the caller has already applied the
  * devicePixelRatio transform, so all coordinates here stay in layout space.
+ *
+ * This is CAMERA A — the down-the-road view used for almost the whole scroll.
+ * Near the end the orchestrator cross-fades to CAMERA B (side profile).
  */
-function draw(
+function drawCameraA(
   ctx: CanvasRenderingContext2D,
   progress: number,
   width: number,
@@ -223,7 +253,7 @@ function draw(
   // --- colour-arc factors (all driven by the shared scroll progress) -------
   const roadColor = smoothstep(BEAT1_END, BEAT2_END, progress); // road first
   const carColor = smoothstep(0.48, 0.7, progress); // car tints late beat 2->3
-  const cityColor = smoothstep(BEAT2_END, BEAT3_END, progress); // windows light
+  const cityColor = smoothstep(0.2, 0.65, progress); // windows start breathing ~20%
   const duskF = smoothstep(0.45, 0.8, progress); // sky -> dusk blue
   const dawnF = smoothstep(0.8, 1.0, progress); // sky -> warm dawn
   const approach = smoothstep(0.55, 0.85, progress); // cul-de-sac grows
@@ -578,6 +608,213 @@ function draw(
   ctx.fillRect(0, 0, width, height);
 }
 
+/**
+ * CAMERA B — a clean, stylized SIDE PROFILE of the car arriving home, in full
+ * warm colour. This is NOT a reprojection of the isometric city (that path is
+ * where the jank lives); it is a separate, simpler flat composition that the
+ * orchestrator cross-fades to at the very end of the scroll. Deterministic.
+ */
+function drawCameraB(
+  ctx: CanvasRenderingContext2D,
+  progress: number,
+  width: number,
+  height: number,
+): void {
+  const localT = smoothstep(0.78, 1.0, progress); // arrival progression 0..1
+  const groundY = height * 0.72;
+
+  // path helpers
+  const circle = (cx: number, cy: number, r: number): void => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const roundRect = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number,
+  ): void => {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // --- sky — warm sunrise gradient -----------------------------------------
+  const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+  sky.addColorStop(0, rgbStr([86, 110, 168]));
+  sky.addColorStop(0.6, rgbStr([214, 150, 138]));
+  sky.addColorStop(1, rgbStr([252, 196, 140]));
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, width, groundY);
+
+  // low warm sun glow on the right, behind the home
+  const sunX = width * 0.74;
+  const sunY = groundY - height * 0.05;
+  const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, height * 0.42);
+  sun.addColorStop(0, rgbaStr([255, 234, 184], 0.9));
+  sun.addColorStop(0.4, rgbaStr([255, 200, 130], 0.32));
+  sun.addColorStop(1, rgbaStr([255, 200, 130], 0));
+  ctx.fillStyle = sun;
+  ctx.fillRect(0, 0, width, groundY);
+
+  // --- background skyline (flat side elevation, lit windows) ---------------
+  for (const b of SIDE_CITY) {
+    const bw = b.w * width;
+    const bh = b.h * height;
+    const bx = b.x * width;
+    const by = groundY - bh;
+    ctx.fillStyle = rgbStr([58, 52, 74]); // dusky violet mass
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = rgbaStr(C_GOLD, 0.5); // lit windows
+    const padX = bw * 0.2;
+    const padY = bh * 0.1;
+    const gw = (bw - padX * 2) / b.cols;
+    const gh = (bh - padY * 2) / b.rows;
+    for (let c = 0; c < b.cols; c++) {
+      for (let r = 0; r < b.rows; r++) {
+        ctx.fillRect(
+          bx + padX + c * gw + gw * 0.22,
+          by + padY + r * gh + gh * 0.22,
+          gw * 0.5,
+          gh * 0.5,
+        );
+      }
+    }
+  }
+
+  // --- ground + road -------------------------------------------------------
+  ctx.fillStyle = rgbStr([74, 58, 50]);
+  ctx.fillRect(0, groundY, width, height - groundY);
+  const roadTop = groundY + (height - groundY) * 0.16;
+  const roadH = (height - groundY) * 0.46;
+  ctx.fillStyle = rgbStr([40, 36, 42]);
+  ctx.fillRect(0, roadTop, width, roadH);
+  // gold centre dashes, scrolling with arrival
+  const cyl = roadTop + roadH * 0.5;
+  ctx.fillStyle = rgbaStr(C_GOLD, 0.8);
+  const dashOffset = (localT * 60) % 60;
+  for (let x = -dashOffset; x < width; x += 60) {
+    ctx.fillRect(x, cyl - 2, 28, 4);
+  }
+
+  // --- the home (destination) on the right ---------------------------------
+  const homeX = width * 0.82;
+  const hw = width * 0.16;
+  const hh = height * 0.2;
+  const homeBaseY = roadTop;
+  // warm glow behind the home
+  const hglow = ctx.createRadialGradient(
+    homeX,
+    homeBaseY - hh * 0.5,
+    8,
+    homeX,
+    homeBaseY - hh * 0.5,
+    hw * 1.6,
+  );
+  hglow.addColorStop(0, rgbaStr(C_GOLD, 0.3));
+  hglow.addColorStop(1, rgbaStr(C_GOLD, 0));
+  ctx.fillStyle = hglow;
+  ctx.fillRect(homeX - hw * 1.6, homeBaseY - hh * 2, hw * 3.2, hh * 2.4);
+  // walls
+  ctx.fillStyle = rgbStr([224, 208, 182]);
+  ctx.fillRect(homeX - hw / 2, homeBaseY - hh, hw, hh);
+  // crimson pitched roof
+  ctx.fillStyle = rgbStr(C_CRIMSON);
+  ctx.beginPath();
+  ctx.moveTo(homeX - hw / 2 - 8, homeBaseY - hh);
+  ctx.lineTo(homeX, homeBaseY - hh - hh * 0.48);
+  ctx.lineTo(homeX + hw / 2 + 8, homeBaseY - hh);
+  ctx.closePath();
+  ctx.fill();
+  // door + lit windows
+  ctx.fillStyle = rgbStr([92, 60, 40]);
+  ctx.fillRect(homeX - hw * 0.08, homeBaseY - hh * 0.4, hw * 0.16, hh * 0.4);
+  ctx.fillStyle = rgbaStr(C_GOLD, 0.85);
+  ctx.fillRect(homeX - hw * 0.36, homeBaseY - hh * 0.74, hw * 0.2, hh * 0.24);
+  ctx.fillRect(homeX + hw * 0.16, homeBaseY - hh * 0.74, hw * 0.2, hh * 0.24);
+
+  // --- the car, side profile, pulling toward home --------------------------
+  const carCX = lerp(width * 0.32, width * 0.58, localT);
+  const L = width * 0.2;
+  const H = L * 0.3;
+  const wheelR = L * 0.1;
+  const wy = cyl - wheelR; // wheels rest on the road centre line
+  const bodyBottom = wy;
+  const bodyTop = wy - H;
+  const bodyLeft = carCX - L * 0.5;
+
+  // headlight beam toward the home (drawn first, under the body)
+  const beam = ctx.createLinearGradient(carCX + L * 0.5, bodyTop + H * 0.4, carCX + L * 1.3, cyl);
+  beam.addColorStop(0, rgbaStr([255, 240, 200], 0.5));
+  beam.addColorStop(1, rgbaStr([255, 240, 200], 0));
+  ctx.fillStyle = beam;
+  ctx.beginPath();
+  ctx.moveTo(carCX + L * 0.48, bodyTop + H * 0.35);
+  ctx.lineTo(carCX + L * 1.3, cyl - H * 0.2);
+  ctx.lineTo(carCX + L * 1.3, cyl + H * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // wheels
+  ctx.fillStyle = "#111418";
+  circle(carCX - L * 0.3, wy, wheelR);
+  circle(carCX + L * 0.3, wy, wheelR);
+  ctx.fillStyle = rgbStr([92, 92, 100]); // hubs
+  circle(carCX - L * 0.3, wy, wheelR * 0.42);
+  circle(carCX + L * 0.3, wy, wheelR * 0.42);
+
+  // body — gold
+  ctx.fillStyle = rgbStr(C_GOLD);
+  roundRect(bodyLeft, bodyTop, L, H, H * 0.35);
+  // cabin — slightly deeper gold, with a sky-tinted window
+  ctx.fillStyle = rgbStr([232, 188, 36]);
+  ctx.beginPath();
+  ctx.moveTo(carCX - L * 0.22, bodyTop);
+  ctx.lineTo(carCX - L * 0.12, bodyTop - H * 0.6);
+  ctx.lineTo(carCX + L * 0.12, bodyTop - H * 0.6);
+  ctx.lineTo(carCX + L * 0.22, bodyTop);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = rgbaStr([186, 214, 238], 0.92); // glass
+  ctx.beginPath();
+  ctx.moveTo(carCX - L * 0.17, bodyTop - H * 0.05);
+  ctx.lineTo(carCX - L * 0.09, bodyTop - H * 0.52);
+  ctx.lineTo(carCX + L * 0.09, bodyTop - H * 0.52);
+  ctx.lineTo(carCX + L * 0.17, bodyTop - H * 0.05);
+  ctx.closePath();
+  ctx.fill();
+  // crimson accent stripe along the lower body
+  ctx.fillStyle = rgbStr(C_CRIMSON);
+  ctx.fillRect(bodyLeft + L * 0.06, bodyBottom - H * 0.28, L * 0.88, H * 0.1);
+  // headlight + tail light
+  ctx.fillStyle = rgbaStr([255, 244, 210], 0.97);
+  circle(carCX + L * 0.46, bodyTop + H * 0.4, H * 0.1);
+  ctx.fillStyle = rgbStr(C_CRIMSON);
+  circle(carCX - L * 0.46, bodyTop + H * 0.4, H * 0.08);
+}
+
+/**
+ * Frame orchestrator — renders CAMERA A across the WHOLE scroll (0..1). The
+ * dual-camera dissolve was removed in D1: drawCameraB stays defined but unused
+ * for now. // D2: reintegrated as rotated camera target
+ */
+function draw(
+  ctx: CanvasRenderingContext2D,
+  progress: number,
+  width: number,
+  height: number,
+): void {
+  drawCameraA(ctx, progress, width, height);
+}
+
 // ---------------------------------------------------------------------------
 // Per-chapter overlay (model B): ONE continuous journey, chapters cross-fade on
 // the SAME scroll progress that drives the canvas. Copy is byte-for-byte from
@@ -740,11 +977,11 @@ export function JourneySection() {
   }, []);
 
   // Chapter opacities from the shared scroll progress (model B cross-fade).
-  const op1 = bandOpacity(progress, 0.0, 0.18); // opener
-  const op2 = bandOpacity(progress, 0.2, 0.38); // the studio / manifest
-  const op3 = bandOpacity(progress, 0.42, 0.6); // the engine
-  const op4 = bandOpacity(progress, 0.64, 0.8); // proof
-  const op5 = bandOpacity(progress, 0.84, 1.0); // operators + final CTA
+  const op1 = bandOpacity(progress, 0.0, 0.16); // ACT1 exposition (opener)
+  const op2 = bandOpacity(progress, 0.2, 0.36); // ACT2 inciting (manifest)
+  const op3 = bandOpacity(progress, 0.42, 0.6); // ACT3 rising action (engine)
+  const op4 = bandOpacity(progress, 0.66, 0.82); // ACT4 climax (proof)
+  const op5 = bandOpacity(progress, 0.86, 1.0); // ACT5 resolution (operators)
   const openConsole = () => setConsoleOpen(true);
 
   return (
