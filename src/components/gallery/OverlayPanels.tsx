@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
+import {
+  ENGINE_EYEBROW,
+  ENGINE_HEADLINE,
+  ENGINE_BODY,
+  ENGINE_AGENTS,
+  OPERATOR_EYEBROW,
+  OPERATOR_HEADLINE,
+  OPERATOR_BODY,
+  OPERATOR_STEPS,
+} from "@/data/studio";
 
 function PanelShell({
   onClose,
@@ -35,34 +45,17 @@ function PanelShell({
 }
 
 export function EnginePanel({ onClose }: { onClose: () => void }) {
-  const agents = [
-    {
-      name: "ARCHITECT AGENT",
-      desc: "Designs the system — schema, routes, infrastructure — before a single line ships.",
-    },
-    {
-      name: "BUILD AGENT",
-      desc: "Writes, tests, and reviews production code in parallel streams, around the clock.",
-    },
-    {
-      name: "DEPLOY AGENT",
-      desc: "Ships to production with green builds, rollback paths, and zero-downtime cutovers.",
-    },
-  ];
+  const agents = ENGINE_AGENTS;
   return (
     <PanelShell onClose={onClose}>
       <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-signal mb-6">
-        THE ENGINE
+        {ENGINE_EYEBROW}
       </p>
       <h2 className="font-display-black text-bone text-3xl md:text-5xl mb-8">
-        80% FASTER DEPLOYMENT. ZERO TEMPLATES. EVER.
+        {ENGINE_HEADLINE}
       </h2>
       <p className="font-mono text-sm text-bone-muted leading-relaxed mb-12">
-        Shade Works runs a coordinated swarm of specialized AI agents — each one
-        trained to architect, code, test, and deploy. They work in parallel. They
-        don&apos;t sleep. They don&apos;t make the same mistake twice. What takes
-        agencies 6 months ships in 6 weeks. What takes developers 3 sprints ships
-        in 3 days.
+        {ENGINE_BODY}
       </p>
       <div className="space-y-px">
         {agents.map((a, i) => (
@@ -94,23 +87,17 @@ export function OperatorsPanel({
   onClose: () => void;
   onExecuteDescent: () => void;
 }) {
-  const steps = [
-    { step: "STEP 01", title: "SUBMIT YOUR BRIEF", desc: "Tell us what you want built. Raw, unfiltered, ambitious." },
-    { step: "STEP 02", title: "SHADE ENGINE ANALYSIS", desc: "Technical breakdown within 48 hours." },
-    { step: "STEP 03", title: "EXECUTION BEGINS", desc: "The swarm deploys. You watch it take shape." },
-  ];
+  const steps = OPERATOR_STEPS;
   return (
     <PanelShell onClose={onClose}>
       <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-signal mb-6">
-        OPERATORS
+        {OPERATOR_EYEBROW}
       </p>
       <h2 className="font-display-black text-bone text-3xl md:text-5xl mb-8">
-        LOCK IN YOUR CONSULTATION.
+        {OPERATOR_HEADLINE}
       </h2>
       <p className="font-mono text-sm text-bone-muted leading-relaxed mb-12">
-        Shade Works operates in limited capacity. We don&apos;t scale headcount —
-        we scale output. Every engagement is deliberate, every client is vetted,
-        and every build is treated like a mission, not a project.
+        {OPERATOR_BODY}
       </p>
       <div className="space-y-3 mb-12">
         {steps.map((s, i) => {

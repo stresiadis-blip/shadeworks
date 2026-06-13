@@ -26,16 +26,19 @@ export const CASE_STUDIES: CaseStudy[] = [
     status: "live",
     stack: ["Next.js", "Supabase", "Stripe", "Vercel", "Resend"],
     overview:
-      "FerdiPoker is the first dedicated MTT (multi-table tournament) poker training platform in Romanian. Built from zero for the founding team — three professional coaches with 300+ paying members.",
+      "FerdiPoker is the first dedicated MTT (multi-table tournament) poker training platform in Romanian. Built from zero for the founding team — a group of professional poker coaches — and shipped to live production with recurring paying subscribers.",
     problem:
-      "A growing audience of Romanian poker players had no native-language training option. Existing platforms ran in English with no community layer, no localized pricing, and no integration with the way Romanian players communicate (Discord, WhatsApp, Twitch).",
+      "Romanian poker players had no native-language MTT training option. Existing platforms ran in English, with no community layer, no localized pricing, and no integration with how Romanian players actually communicate (Discord).",
     solution:
-      "A subscription-first product with bilingual copy, Stripe-backed monthly and annual plans, a private video library with progress tracking, and Discord OAuth so paying members are auto-enrolled into the gated server. Admin tooling for the coaches to publish weekly seminars without touching code.",
+      "A subscription-first product: fully bilingual (RO/EN), Stripe-backed monthly and annual plans with EU consumer-law consent (OUG 34/2014), a member-only video library with per-user progress tracking, and Discord OAuth so paying members are auto-enrolled into the gated server. The video content is protected with a multi-layer access model (column-level database REVOKE, signed CDN URLs, token auth). Admin tooling lets the coaches publish seminars and go live without touching code.",
     results: [
-      "300+ paying members in first year",
-      "100+ seminars published with weekly cadence",
-      "Sub-2-second median Largest Contentful Paint",
-      "Zero downtime since launch (Vercel + Supabase)",
+      "Live in production with recurring Stripe subscribers",
+      "130+ seminars published",
+      "Lighthouse: Performance 95, Accessibility 100 (mobile)",
+      "Largest Contentful Paint 2.4s (Good)",
+      "Security headers grade A; full GDPR cookie-consent compliance",
+      "Multi-layer video protection (DB-level grants, signed URLs, token auth)",
+      "Zero downtime since launch (Vercel + Supabase Pro)",
     ],
     liveUrl: "https://ferdipoker.ro",
   },
