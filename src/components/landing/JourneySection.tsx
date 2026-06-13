@@ -264,6 +264,9 @@ function drawCameraA(
   // 0 = down-the-road, 1 = full side. D2a uses it ONLY for a global lateral
   // slide (incipient Vectr pan); the isometric rotation lands in D2b.
   const cameraAngle = smoothstep(0.4, 0.9, progress);
+  // D3b: cinematic push-in. Strong early (car approaching, iso), neutralized at side-view
+  const zoomRaw = smoothstep(0.0, 0.55, progress);
+  const zoom = 1 + zoomRaw * 0.35 * (1 - cameraAngle);
 
   const skyTop = mix(mix(SKY_NOIR_TOP, SKY_DUSK_TOP, duskF), SKY_DAWN_TOP, dawnF);
   const skyBot = mix(mix(SKY_NOIR_BOT, SKY_DUSK_BOT, duskF), SKY_DAWN_BOT, dawnF);
@@ -310,7 +313,7 @@ function drawCameraA(
   // Interpolated per-depth scale used for box/marker sizes (kills perspective
   // shrink as we rotate to the flat side view).
   const sceneScale = (d: number): number =>
-    lerp(depthScale(d), SIDE_SCALE, cameraAngle);
+    lerp(depthScale(d), SIDE_SCALE, cameraAngle) * zoom;
   const ground = (d: number, v: number): [number, number] => {
     const sIso = depthScale(d);
     const xIso = centerX(d) + v * lanePx * sIso;
@@ -320,7 +323,10 @@ function drawCameraA(
     // keep the D2a global leftward slide on top of the blend
     const x = lerp(xIso, xSide, cameraAngle) - cameraAngle * width * 0.22;
     const y = lerp(yIso, ySide, cameraAngle);
-    return [x, y];
+    // D3b: scale final position toward screen center so zoom is a centered push-in, not a pan
+    const cx = width / 2;
+    const cy = groundY(0); // focal anchor near horizon base; adjust if needed
+    return [cx + (x - cx) * zoom, cy + (y - cy) * zoom];
   };
 
   // Polygon/line helpers operating on projected [x, y] points.
@@ -534,11 +540,24 @@ function drawCameraA(
     | { d: number; kind: "building"; b: Building }
     | { d: number; kind: "car" };
 
-  // Car depth mapping. ISO (angle 0): carD = 1 - progress, so the car drives
-  // TOWARD the camera. SIDE (angle 1): the car drives rightward toward the home
-  // (large d = right), so we blend its DRAWN depth from carD to a forward-moving
-  // side depth. carDraw == carD at angle 0 (D2a identical).
-  const carD = 1 - progress;
+  // Car depth mapping. ISO (angle 0): the car drives TOWARD the camera. SIDE
+  // (angle 1): it drives rightward toward the home (large d = right), so we
+  // blend its DRAWN depth from carD to a forward-moving side depth. carDraw ==
+  // carD at angle 0 (D2a identical).
+  //
+  // D4: phased journey pacing. Car advances down the road in beats synced to
+  // the bend + camera rotation, instead of a constant linear crawl.
+  //   0.00-0.40 : far -> mid (approaching down the straight, iso)
+  //   0.40-0.60 : mid -> bend point (the right curve, camera starts rotating)
+  //   0.60-1.00 : bend -> near/home handoff
+  // roadPos 0 = far(d=1), 1 = near(d=0). Piecewise-eased so each beat reads.
+  const roadPos =
+    progress < 0.4
+      ? smoothstep(0.0, 0.4, progress) * 0.62 // first stretch — car comes well forward by ~act 2
+      : progress < 0.6
+        ? 0.62 + smoothstep(0.4, 0.6, progress) * 0.18 // through the bend
+        : 0.8 + smoothstep(0.6, 1.0, progress) * 0.2; // bend -> home
+  const carD = 1 - roadPos;
   const carSideD = lerp(0.25, 0.9, progress); // ends just left of the home
   const carDraw = lerp(carD, carSideD, cameraAngle);
 
@@ -576,8 +595,8 @@ function drawCameraA(
       drawIsoBox(
         carDraw,
         0,
-        lerp(0.85, 2.4, cameraAngle),
-        lerp(1.2, 0.7, cameraAngle),
+        lerp(0.85, 2.4, cameraAngle) * lerp(1.0, 1.7, roadPos), // grows as it nears in iso
+        lerp(1.2, 0.7, cameraAngle) * lerp(1.0, 1.4, roadPos),
         (m) => {
           const val = 7 * m + 2;
           const noir: RGB = [val, val, val + 1];
