@@ -6,6 +6,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { LandingHero } from "./LandingHero";
 import { ManifestSection } from "./ManifestSection";
+import { ProofSection } from "./ProofSection";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -81,6 +82,7 @@ export function LandingExperience() {
         )}
         <div className="bg-ink">
           <ManifestSection />
+          <ProofSection />
           {/* sections added in the next commits */}
         </div>
       </div>
