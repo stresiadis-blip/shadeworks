@@ -8,23 +8,117 @@ gsap.registerPlugin(ScrollTrigger);
 
 /** Noir palette mirrored from globals.css — canvas needs raw hex, not tokens. */
 const INK = "#0a0a0a";
-const GOLD = "#ffd400";
-const GRID = "rgba(247, 244, 236, 0.1)"; // bone/10
-const READOUT = "rgba(247, 244, 236, 0.7)"; // bone, dimmed
 
 /** Linear interpolation helper. */
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
+// ---------------------------------------------------------------------------
+// Deterministic world data — built ONCE at module load so every frame renders
+// the identical layout. No per-frame randomness => no flicker, stable 60fps.
+// Coordinates are resolution-independent (depth d in 0..1, lateral v in lane
+// units); they get projected to the cinematic frame at draw time.
+// ---------------------------------------------------------------------------
+
+/** Small mulberry32 PRNG — a deterministic stream from a constant seed. */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const ROAD_HALF = 2.4; // half road width, in lane units
+
+interface Building {
+  d: number; // depth along the road, 0 = foreground/near, 1 = horizon/far
+  v: number; // signed lateral offset (lane units); |v| > ROAD_HALF
+  footW: number; // footprint diameter (lane units)
+  h: number; // height (lane units)
+  tone: number; // base grey value (near-black -> dark grey)
+}
+
+/** Procedural city flanking the road on both sides, near -> far. */
+function buildCity(): Building[] {
+  const rng = mulberry32(0x5eed);
+  const list: Building[] = [];
+  const ROWS = 24;
+  for (let i = 0; i < ROWS; i++) {
+    const rowD = i / ROWS;
+    for (const side of [-1, 1] as const) {
+      const lots = 1 + (rng() < 0.55 ? 1 : 0);
+      for (let j = 0; j < lots; j++) {
+        if (rng() < 0.12) continue; // scattered empty lots
+        list.push({
+          d: rowD + rng() * 0.02,
+          v: side * (ROAD_HALF + 0.5 + j * 1.15 + rng() * 0.5),
+          footW: 0.55 + rng() * 0.45,
+          h: 1.3 + rng() * 5,
+          tone: 14 + Math.round(rng() * 26),
+        });
+      }
+    }
+  }
+  return list;
+}
+
+interface Tower {
+  x: number; // 0..1 fraction of width
+  w: number; // 0..1 fraction of width
+  h: number; // 0..1 fraction of height
+}
+
+/** Distant skyscraper silhouettes strung along the horizon line. */
+function buildSkyline(): Tower[] {
+  const rng = mulberry32(0xb14e);
+  const list: Tower[] = [];
+  for (let i = 0; i < 46; i++) {
+    list.push({
+      x: i / 46 + rng() * 0.01,
+      w: 0.012 + rng() * 0.022,
+      h: 0.02 + rng() * 0.07,
+    });
+  }
+  return list;
+}
+
+interface Streak {
+  x: number; // 0..1 fraction of width
+  y: number; // 0..1 fraction of height
+  len: number; // 0..1 fraction of height
+}
+
+/** A fixed set of rain streaks, offset by progress at draw time (performant). */
+function buildRain(): Streak[] {
+  const rng = mulberry32(0x9a17);
+  const list: Streak[] = [];
+  for (let i = 0; i < 180; i++) {
+    list.push({ x: rng(), y: rng(), len: 0.02 + rng() * 0.035 });
+  }
+  return list;
+}
+
+const CITY = buildCity();
+const SKYLINE = buildSkyline();
+const RAIN = buildRain();
+
 /**
- * COMMIT A — visual test draw only. Clears to ink, lays down a faint isometric
- * ground grid, then slides ONE gold "car" rectangle along a bottom-left ->
- * top-right diagonal as progress 0->1. The mono progress readout is TEMPORARY
- * and gets removed in commit B (replaced by the real city art + color arc).
+ * COMMIT B — the isometric noir city as a cinematic film frame. Fully
+ * monochrome (the color arc is commit C). Top ~25% is night sky + a horizon
+ * line of distant skyscraper silhouettes; below it a tilted-isometric city
+ * flanks a wet-asphalt road that runs from the foreground UP toward the
+ * horizon (fake-perspective depth scaling: near = large/crisp, far =
+ * small/dim). A small car drives up the road from near to far as progress
+ * 0->1, with faint white headlight cones. Heavy diagonal rain over the frame.
+ * The camera loosely pans vertically as the car advances (not locked centre).
  *
  * width/height are CSS pixels — the caller has already applied the
- * devicePixelRatio transform so all coordinates here stay in layout space.
+ * devicePixelRatio transform, so all coordinates here stay in layout space.
  */
 function draw(
   ctx: CanvasRenderingContext2D,
@@ -32,58 +126,251 @@ function draw(
   width: number,
   height: number,
 ): void {
-  // background
-  ctx.clearRect(0, 0, width, height);
+  // --- frame + projection setup -------------------------------------------
+  const horizonY = height * 0.26;
+  const bottomY = height * 1.04; // road mouth sits just off the bottom edge
+  const lanePx = Math.max(20, width * 0.05);
+  const camY = -height * 0.04 * progress; // gentle vertical pan, eased by car
+
+  // Fake perspective: depth 0 (near) -> scale 1, depth 1 (horizon) -> small.
+  const depthScale = (d: number): number => 1 / (1 + d * 5);
+  const sFar = depthScale(1);
+  const yNorm = (d: number): number => (depthScale(d) - sFar) / (1 - sFar);
+  const groundY = (d: number): number =>
+    horizonY + (bottomY - horizonY) * yNorm(d) + camY;
+  // Road centreline winds, then converges to the vanishing point at horizon.
+  const centerX = (d: number): number =>
+    width * 0.5 + Math.sin(d * Math.PI * 1.6) * width * 0.13 * (1 - d);
+  const ground = (d: number, v: number): [number, number] => [
+    centerX(d) + v * lanePx * depthScale(d),
+    groundY(d),
+  ];
+
+  // Polygon/line helpers operating on projected [x, y] points.
+  const poly = (pts: [number, number][]): void => {
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    ctx.fill();
+  };
+  const strokePoly = (pts: [number, number][]): void => {
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    ctx.stroke();
+  };
+  const line = (p: [number, number], q: [number, number]): void => {
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    ctx.lineTo(q[0], q[1]);
+    ctx.stroke();
+  };
+
+  // One tilted-isometric extruded box at (d, v): 2:1 diamond base + two visible
+  // side faces + top, depth-scaled. fill(faceMul) tones the three faces.
+  const drawIsoBox = (
+    d: number,
+    v: number,
+    footW: number,
+    h: number,
+    fill: (faceMul: number) => string,
+    edge: string,
+  ): void => {
+    const s = depthScale(d);
+    const [cx, cy] = ground(d, v);
+    const dW = footW * lanePx * s * 0.5;
+    const dH = dW * 0.5; // 2:1 isometric diamond
+    const hPx = h * lanePx * s;
+
+    const bRight: [number, number] = [cx + dW, cy];
+    const bBot: [number, number] = [cx, cy + dH];
+    const bLeft: [number, number] = [cx - dW, cy];
+    const tTop: [number, number] = [cx, cy - dH - hPx];
+    const tRight: [number, number] = [cx + dW, cy - hPx];
+    const tBot: [number, number] = [cx, cy + dH - hPx];
+    const tLeft: [number, number] = [cx - dW, cy - hPx];
+
+    ctx.fillStyle = fill(0.66); // right face (lit edge)
+    poly([bRight, bBot, tBot, tRight]);
+    ctx.fillStyle = fill(0.4); // left face (in shadow)
+    poly([bLeft, bBot, tBot, tLeft]);
+    ctx.fillStyle = fill(1); // top face
+    poly([tTop, tRight, tBot, tLeft]);
+
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 1;
+    strokePoly([tTop, tRight, tBot, tLeft]); // top outline
+    line(bBot, tBot); // front vertical edge
+  };
+
+  // --- sky + horizon -------------------------------------------------------
   ctx.fillStyle = INK;
   ctx.fillRect(0, 0, width, height);
 
-  // isometric ground grid — projected flat plane of thin bone lines
-  const cx = width / 2;
-  const groundY = height * 0.52;
-  const tile = Math.max(36, Math.min(width, height) / 14);
-  const isoW = tile;
-  const isoH = tile * 0.5;
-  const half = 9;
+  const sky = ctx.createLinearGradient(0, 0, 0, horizonY + camY);
+  sky.addColorStop(0, "rgb(5, 5, 8)"); // darker at the very top
+  sky.addColorStop(1, INK);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, width, horizonY + camY + 1);
 
-  const project = (gx: number, gy: number): [number, number] => [
-    cx + (gx - gy) * isoW,
-    groundY + (gx + gy) * isoH,
-  ];
+  // distant skyscraper silhouettes along the horizon (dark masses, faint tops)
+  const skyBase = horizonY + camY;
+  for (const t of SKYLINE) {
+    const tw = t.w * width;
+    const th = t.h * height;
+    const tx = t.x * width;
+    ctx.fillStyle = "rgb(17, 18, 21)";
+    ctx.fillRect(tx, skyBase - th, tw, th);
+    ctx.fillStyle = "rgba(247, 244, 236, 0.05)"; // faint lit top edge
+    ctx.fillRect(tx, skyBase - th, tw, 1);
+  }
+  // thin horizon glow to separate sky from ground
+  const glow = ctx.createLinearGradient(0, skyBase - 6, 0, skyBase + 6);
+  glow.addColorStop(0, "rgba(247, 244, 236, 0)");
+  glow.addColorStop(0.5, "rgba(247, 244, 236, 0.06)");
+  glow.addColorStop(1, "rgba(247, 244, 236, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, skyBase - 6, width, 12);
 
-  ctx.strokeStyle = GRID;
+  // --- road ----------------------------------------------------------------
+  const SAMPLES = 60;
+  ctx.fillStyle = "rgb(22, 23, 26)"; // wet-asphalt dark
+  for (let i = 0; i < SAMPLES; i++) {
+    const dA = i / SAMPLES;
+    const dB = (i + 1) / SAMPLES;
+    poly([
+      ground(dA, -ROAD_HALF),
+      ground(dA, ROAD_HALF),
+      ground(dB, ROAD_HALF),
+      ground(dB, -ROAD_HALF),
+    ]);
+  }
+  // faint reflective sheen down the centre of the road
+  ctx.fillStyle = "rgba(247, 244, 236, 0.025)";
+  for (let i = 0; i < SAMPLES; i++) {
+    const dA = i / SAMPLES;
+    const dB = (i + 1) / SAMPLES;
+    poly([
+      ground(dA, -0.5),
+      ground(dA, 0.5),
+      ground(dB, 0.5),
+      ground(dB, -0.5),
+    ]);
+  }
+  // road edge lines + dashed centre line
+  ctx.strokeStyle = "rgba(247, 244, 236, 0.07)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let i = -half; i <= half; i++) {
-    const [ax, ay] = project(i, -half);
-    const [bx, by] = project(i, half);
-    ctx.moveTo(ax, ay);
-    ctx.lineTo(bx, by);
+  for (let i = 0; i <= SAMPLES; i++) {
+    const [lx, ly] = ground(i / SAMPLES, -ROAD_HALF);
+    if (i === 0) ctx.moveTo(lx, ly);
+    else ctx.lineTo(lx, ly);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  for (let i = 0; i <= SAMPLES; i++) {
+    const [rx, ry] = ground(i / SAMPLES, ROAD_HALF);
+    if (i === 0) ctx.moveTo(rx, ry);
+    else ctx.lineTo(rx, ry);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(247, 244, 236, 0.16)";
+  const DASH = 44;
+  for (let i = 0; i < DASH; i += 2) {
+    line(ground(i / DASH, 0), ground((i + 1) / DASH, 0));
+  }
 
-    const [pcx, pcy] = project(-half, i);
-    const [dx, dy] = project(half, i);
-    ctx.moveTo(pcx, pcy);
-    ctx.lineTo(dx, dy);
+  // --- render list: buildings + car, painter-sorted far -> near ------------
+  type Item =
+    | { d: number; kind: "building"; b: Building }
+    | { d: number; kind: "car" };
+
+  // Invert the road position so scrolling DOWN (progress -> 1) drives the car
+  // FORWARD toward the horizon, and scrolling up reverses it.
+  const carD = 1 - progress;
+
+  const items: Item[] = CITY.map((b) => ({ d: b.d, kind: "building", b }));
+  items.push({ d: carD, kind: "car" });
+  items.sort((p, q) => q.d - p.d); // farthest first (drawn behind)
+
+  for (const it of items) {
+    if (it.kind === "car") {
+      // headlight cones — faint white, leading the car in its travel direction
+      // (carD decreases as the car advances toward the horizon).
+      const dF = Math.max(carD - 0.16, 0);
+      for (const lamp of [-0.22, 0.22] as const) {
+        const apex = ground(carD, lamp);
+        apex[1] -= lanePx * depthScale(carD) * 0.3; // lift to lamp height
+        const left = ground(dF, lamp - 0.5);
+        const right = ground(dF, lamp + 0.5);
+        const beam = ctx.createLinearGradient(
+          apex[0],
+          apex[1],
+          (left[0] + right[0]) / 2,
+          (left[1] + right[1]) / 2,
+        );
+        beam.addColorStop(0, "rgba(247, 244, 236, 0.18)");
+        beam.addColorStop(1, "rgba(247, 244, 236, 0)");
+        ctx.fillStyle = beam;
+        poly([apex, left, right]);
+      }
+      // car body — small near-black iso box with a faint bone edge
+      drawIsoBox(
+        carD,
+        0,
+        0.5,
+        0.7,
+        (m) => {
+          const val = Math.round(7 * m + 2);
+          return `rgb(${val}, ${val}, ${val + 1})`;
+        },
+        "rgba(247, 244, 236, 0.26)",
+      );
+      continue;
+    }
+
+    const b = it.b;
+    const dim = 0.5 + (1 - b.d) * 0.5; // foreground brighter, horizon dimmer
+    drawIsoBox(
+      b.d,
+      b.v,
+      b.footW,
+      b.h,
+      (m) => {
+        const val = Math.round(b.tone * dim * m);
+        return `rgb(${val}, ${val}, ${val})`;
+      },
+      `rgba(247, 244, 236, ${(0.05 + (1 - b.d) * 0.08).toFixed(3)})`,
+    );
+  }
+
+  // --- rain — heavy uniform diagonal streaks, offset by progress -----------
+  const slant = 0.16;
+  ctx.strokeStyle = "rgba(247, 244, 236, 0.1)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const s of RAIN) {
+    const yy = ((s.y + progress * 1.1) % 1) * height;
+    const xx = s.x * width;
+    const L = s.len * height;
+    ctx.moveTo(xx, yy);
+    ctx.lineTo(xx - L * slant, yy + L);
   }
   ctx.stroke();
 
-  // the "car" — gold rectangle travelling the diagonal isometric path
-  const carX = lerp(width * 0.12, width * 0.88, progress);
-  const carY = lerp(height * 0.86, height * 0.16, progress);
-  const carW = Math.max(28, width * 0.03);
-  const carH = carW * 0.62;
-
-  ctx.save();
-  ctx.shadowColor = "rgba(255, 212, 0, 0.55)";
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = GOLD;
-  ctx.fillRect(carX - carW / 2, carY - carH / 2, carW, carH);
-  ctx.restore();
-
-  // TEMPORARY progress readout (removed in commit B)
-  ctx.fillStyle = READOUT;
-  ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText(progress.toFixed(2), 16, height - 16);
+  // --- vignette — sink the edges into the ink (noir framing) ---------------
+  const vg = ctx.createRadialGradient(
+    width / 2,
+    height * 0.55,
+    Math.min(width, height) * 0.2,
+    width / 2,
+    height * 0.55,
+    Math.max(width, height) * 0.75,
+  );
+  vg.addColorStop(0, "rgba(10, 10, 10, 0)");
+  vg.addColorStop(1, "rgba(10, 10, 10, 0.7)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, width, height);
 }
 
 /**
@@ -109,8 +396,8 @@ export function JourneySection() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Match the backing store to the CSS box * devicePixelRatio so the grid and
-    // car stay crisp on retina. All draw() coordinates remain in CSS pixels.
+    // Match the backing store to the CSS box * devicePixelRatio so the scene
+    // stays crisp on retina. All draw() coordinates remain in CSS pixels.
     const sizeCanvas = (): void => {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth;
