@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { CarJourneyBackground } from "./CarJourneyBackground";
+import { JourneyBackdrop } from "./JourneyBackdrop";
 import { ProcessSection } from "./ProcessSection";
 import { ManifestSection } from "./ManifestSection";
 import { ProofSection } from "./ProofSection";
@@ -77,15 +77,16 @@ export function LandingExperience() {
     return () => mm.revert();
   }, []);
 
-  // Scrim ramps up as the scene brightens (noir top -> sunrise) so bone/crimson
-  // text stays legible at both ends. Edges (where eyebrow/cue/labels sit) get a
-  // touch more than the centre, so the scene still reads through.
-  const veil = 0.18 + bgProgress * 0.38;
+  // The backdrop stays neo-noir (dark) the whole way, so a light scrim keeps
+  // bone/crimson text legible; it ramps gently as the dawn glow bleeds in near
+  // the horizon. Edges (eyebrow/cue/labels) get a touch more than the centre,
+  // so the scene still reads through.
+  const veil = 0.14 + bgProgress * 0.24;
 
   return (
     <div ref={rootRef} className="relative">
-      {/* car-journey scene — fixed behind everything, global-scroll-driven */}
-      <CarJourneyBackground reduced={reduced} onProgress={onBgProgress} />
+      {/* cinematic noir car-approach backdrop — fixed, scroll-driven over hero */}
+      <JourneyBackdrop reduced={reduced} onProgress={onBgProgress} />
 
       {/* legibility scrim between the scene and the content */}
       <div
