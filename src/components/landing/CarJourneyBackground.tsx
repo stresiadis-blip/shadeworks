@@ -1,0 +1,835 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
+/**
+ * Car-journey background — the cinematic noir->sunrise scene from the journey
+ * branch (147d973: iso down-the-road, car from the horizon with push-in zoom,
+ * hard CUT at 0.62, side-profile sunrise arrival), brought across as a PURE
+ * fixed background layer: only the canvas drawing, no text/acts overlay.
+ *
+ * One global scroll progress (0 at page top, 1 at bottom) drives the whole
+ * visual arc, so the colour transition maps across the full page (hero ->
+ * process -> editorial). Deterministic (seeded), DPR-capped, reduced-motion
+ * safe (one static frame at progress 0). The text/process belong to the Vectr
+ * structure above this layer.
+ */
+
+/** Linear interpolation helper. */
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+type RGB = [number, number, number];
+
+/** Hermite smoothstep, self-clamped to [0,1]. */
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  let t = (x - edge0) / (edge1 - edge0);
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return t * t * (3 - 2 * t);
+}
+
+const mix = (a: RGB, b: RGB, t: number): RGB => [
+  a[0] + (b[0] - a[0]) * t,
+  a[1] + (b[1] - a[1]) * t,
+  a[2] + (b[2] - a[2]) * t,
+];
+const rgbStr = (c: RGB): string =>
+  `rgb(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])})`;
+const rgbaStr = (c: RGB, a: number): string =>
+  `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${a})`;
+
+// Brand + neon palette.
+const C_BONE: RGB = [247, 244, 236];
+const C_GOLD: RGB = [255, 212, 0]; // car signature + warm accents
+const C_CRIMSON: RGB = [209, 31, 42]; // brand crimson — used sparingly
+const C_INK: RGB = [10, 10, 10];
+const NEON: RGB[] = [
+  [0, 229, 255], // cyan
+  [255, 46, 196], // magenta
+  [160, 90, 255], // purple
+  [60, 255, 160], // green
+  [255, 212, 0], // gold
+];
+
+// Sky keyframes: noir night -> deep dusk blue.
+const SKY_NOIR_TOP: RGB = [5, 5, 8];
+const SKY_NOIR_BOT: RGB = [10, 10, 10];
+const SKY_DUSK_TOP: RGB = [8, 12, 34];
+const SKY_DUSK_BOT: RGB = [26, 24, 50];
+
+// ---------------------------------------------------------------------------
+// Deterministic world data — built ONCE at module load so every frame renders
+// the identical layout. No per-frame randomness => no flicker, stable 60fps.
+// ---------------------------------------------------------------------------
+
+/** Small mulberry32 PRNG — a deterministic stream from a constant seed. */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const ROAD_HALF = 3.4; // half road width, in lane units (wide, cinematic street)
+
+/** A window on a building's lit (right) face, in face-local coords (0..1). */
+interface Win {
+  u: number; // along the base edge
+  w: number; // up the height
+}
+
+interface Building {
+  d: number; // depth along the road, 0 = foreground/near, 1 = horizon/far
+  v: number; // signed lateral offset (lane units); |v| > ROAD_HALF
+  footW: number; // footprint diameter (lane units)
+  h: number; // height (lane units)
+  tone: number; // base grey value (near-black -> dark grey)
+  neon: number; // index into NEON — this building's window colour
+  litOffset: number; // 0..1 scatter so windows light at different scroll points
+  windows: Win[]; // deterministic window positions on the lit face
+}
+
+/** Procedural city flanking the road on both sides, near -> far. */
+function buildCity(): Building[] {
+  const rng = mulberry32(0x5eed);
+  const list: Building[] = [];
+  const ROWS = 24;
+  for (let i = 0; i < ROWS; i++) {
+    const rowD = i / ROWS;
+    for (const side of [-1, 1] as const) {
+      const lots = 1 + (rng() < 0.55 ? 1 : 0);
+      for (let j = 0; j < lots; j++) {
+        if (rng() < 0.12) continue; // scattered empty lots
+        const winCount = 2 + Math.floor(rng() * 3);
+        const windows: Win[] = [];
+        for (let k = 0; k < winCount; k++) {
+          windows.push({ u: 0.2 + rng() * 0.6, w: 0.15 + rng() * 0.65 });
+        }
+        list.push({
+          d: rowD + rng() * 0.02,
+          v: side * (ROAD_HALF + 0.5 + j * 1.15 + rng() * 0.5),
+          footW: 0.55 + rng() * 0.45,
+          h: 1.3 + rng() * 5,
+          tone: 14 + Math.round(rng() * 26),
+          neon: Math.floor(rng() * NEON.length),
+          litOffset: rng(),
+          windows,
+        });
+      }
+    }
+  }
+  return list;
+}
+
+interface Tower {
+  x: number; // 0..1 fraction of width
+  w: number; // 0..1 fraction of width
+  h: number; // 0..1 fraction of height
+}
+
+/** Distant skyscraper silhouettes strung along the horizon line. */
+function buildSkyline(): Tower[] {
+  const rng = mulberry32(0xb14e);
+  const list: Tower[] = [];
+  for (let i = 0; i < 46; i++) {
+    list.push({
+      x: i / 46 + rng() * 0.01,
+      w: 0.012 + rng() * 0.022,
+      h: 0.02 + rng() * 0.07,
+    });
+  }
+  return list;
+}
+
+interface Streak {
+  x: number; // 0..1 fraction of width
+  y: number; // 0..1 fraction of height
+  len: number; // 0..1 fraction of height
+}
+
+/** A fixed set of rain streaks, offset by progress at draw time (performant). */
+function buildRain(): Streak[] {
+  const rng = mulberry32(0x9a17);
+  const list: Streak[] = [];
+  for (let i = 0; i < 180; i++) {
+    list.push({ x: rng(), y: rng(), len: 0.02 + rng() * 0.035 });
+  }
+  return list;
+}
+
+/** A flat side-elevation building for the arrival background skyline. */
+interface SideBuilding {
+  x: number; // 0..1 fraction of width
+  w: number; // 0..1 fraction of width
+  h: number; // 0..1 fraction of height
+  cols: number; // window grid
+  rows: number;
+}
+
+/** Deterministic side-elevation skyline behind the arrival scene. */
+function buildSideCity(): SideBuilding[] {
+  const rng = mulberry32(0xc0de);
+  const list: SideBuilding[] = [];
+  for (let i = 0; i < 11; i++) {
+    list.push({
+      x: i / 11 + rng() * 0.02,
+      w: 0.05 + rng() * 0.05,
+      h: 0.12 + rng() * 0.26,
+      cols: 2 + Math.floor(rng() * 3),
+      rows: 3 + Math.floor(rng() * 5),
+    });
+  }
+  return list;
+}
+
+const CITY = buildCity();
+const SKYLINE = buildSkyline();
+const RAIN = buildRain();
+const SIDE_CITY = buildSideCity();
+
+// Deterministic film-grain dots (positions fixed; alpha pulses per frame via t).
+interface Grain {
+  x: number;
+  y: number;
+}
+function buildGrain(): Grain[] {
+  const rng = mulberry32(0x6a17);
+  const list: Grain[] = [];
+  for (let i = 0; i < 420; i++) list.push({ x: rng(), y: rng() });
+  return list;
+}
+const GRAIN = buildGrain();
+
+const CUT = 0.62;
+
+function drawCameraA(
+  ctx: CanvasRenderingContext2D,
+  progress: number,
+  width: number,
+  height: number,
+): void {
+  // FIVE ACTS on a single clock. HARD CUT at CUT between the iso down-the-road
+  // view (acts 1-3) and the flat side-profile arrival (acts 4-5).
+  if (progress < CUT) {
+    drawIsoAct(ctx, progress / CUT, width, height); // local 0..1 across acts 1-3
+  } else {
+    drawSideAct(ctx, (progress - CUT) / (1 - CUT), width, height); // local 0..1 acts 4-5
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ACTS 1-3 — iso down-the-road. `t` is local 0..1 (global 0..CUT). Road shape
+// is FIXED; only the car advances, lights wake, and the camera pushes in.
+// ---------------------------------------------------------------------------
+function drawIsoAct(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  width: number,
+  height: number,
+): void {
+  const phaseA = 1 - smoothstep(0.0, 0.32, t); // 1 -> 0 over act 1
+  const phaseC = smoothstep(0.62, 1.0, t); // 0 -> 1 into act 3
+  const cityColor = smoothstep(0.22, 0.7, t); // neon windows wake mid-journey
+  const duskF = smoothstep(0.4, 1.0, t); // noir -> dusk by end of act 3
+  const rainAmount = phaseA; // rain owns act 1, gone by act 2
+  const zoom = 1 + smoothstep(0.0, 0.65, t) * 0.55; // push-in peaks entering act 3
+  const enginePulse = phaseC; // act-3 rhythmic energy strength
+
+  const skyTop = mix(SKY_NOIR_TOP, SKY_DUSK_TOP, duskF);
+  const skyBot = mix(SKY_NOIR_BOT, SKY_DUSK_BOT, duskF);
+  const asphalt = mix([18, 19, 22], [30, 27, 38], duskF * 0.7);
+
+  const horizonY = height * (0.26 + 0.1 * phaseC);
+  const bottomY = height * 1.04;
+  const lanePx = Math.max(20, width * 0.05);
+
+  const depthScale = (d: number): number => 1 / (1 + d * (5 - 1.4 * phaseC));
+  const sFar = depthScale(1);
+  const yNorm = (d: number): number => (depthScale(d) - sFar) / (1 - sFar);
+  const groundY = (d: number): number =>
+    horizonY + (bottomY - horizonY) * yNorm(d);
+  // FIXED double-S serpentine (constant amplitude — never morphs on scroll).
+  const centerX = (d: number): number =>
+    width * 0.5 + Math.sin(d * Math.PI * 2) * width * 0.22 * (1 - d);
+
+  const cx0 = width / 2;
+  const cy0 = groundY(0);
+  const pz = (x: number, y: number): [number, number] => [
+    cx0 + (x - cx0) * zoom,
+    cy0 + (y - cy0) * zoom,
+  ];
+  const ground = (d: number, v: number): [number, number] => {
+    const s = depthScale(d);
+    return pz(centerX(d) + v * lanePx * s, groundY(d));
+  };
+  const sceneScale = (d: number): number => depthScale(d) * zoom;
+
+  const poly = (pts: [number, number][]): void => {
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    ctx.fill();
+  };
+  const strokePoly = (pts: [number, number][]): void => {
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    ctx.stroke();
+  };
+  const line = (p: [number, number], q: [number, number]): void => {
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    ctx.lineTo(q[0], q[1]);
+    ctx.stroke();
+  };
+
+  const drawIsoBox = (
+    d: number,
+    v: number,
+    footW: number,
+    h: number,
+    fill: (m: number) => string,
+    edge: string,
+    windows?: Win[],
+    winColor?: string,
+  ): void => {
+    const s = sceneScale(d);
+    const [cx, cy] = ground(d, v);
+    const dW = footW * lanePx * s * 0.5;
+    const dH = dW * 0.5;
+    const hPx = h * lanePx * s;
+    const bRight: [number, number] = [cx + dW, cy];
+    const bBot: [number, number] = [cx, cy + dH];
+    const bLeft: [number, number] = [cx - dW, cy];
+    const tTop: [number, number] = [cx, cy - dH - hPx];
+    const tRight: [number, number] = [cx + dW, cy - hPx];
+    const tBot: [number, number] = [cx, cy + dH - hPx];
+    const tLeft: [number, number] = [cx - dW, cy - hPx];
+    ctx.fillStyle = fill(0.66);
+    poly([bRight, bBot, tBot, tRight]);
+    ctx.fillStyle = fill(0.4);
+    poly([bLeft, bBot, tBot, tLeft]);
+    ctx.fillStyle = fill(1);
+    poly([tTop, tRight, tBot, tLeft]);
+    if (windows && winColor) {
+      ctx.fillStyle = winColor;
+      const sw = Math.max(1.1, dW * 0.18);
+      const sh = Math.max(1.1, hPx * 0.07);
+      for (const win of windows) {
+        const wx = bRight[0] + (bBot[0] - bRight[0]) * win.u;
+        const wy = bRight[1] + (bBot[1] - bRight[1]) * win.u - win.w * hPx;
+        ctx.fillRect(wx - sw / 2, wy - sh / 2, sw, sh);
+      }
+    }
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 1;
+    strokePoly([tTop, tRight, tBot, tLeft]);
+    line(bBot, tBot);
+  };
+
+  // --- sky -------------------------------------------------------------------
+  ctx.fillStyle = rgbStr(mix(C_INK, [22, 22, 28], duskF));
+  ctx.fillRect(0, 0, width, height);
+  const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
+  sky.addColorStop(0, rgbStr(skyTop));
+  sky.addColorStop(1, rgbStr(skyBot));
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, width, horizonY + 1);
+
+  // distant skyline
+  ctx.fillStyle = rgbStr(mix([17, 18, 21], [40, 44, 70], duskF));
+  for (const tw of SKYLINE) {
+    ctx.fillRect(tw.x * width, horizonY - tw.h * height, tw.w * width, tw.h * height);
+  }
+
+  // --- road surface (fixed serpentine) --------------------------------------
+  const SAMPLES = 60;
+  ctx.fillStyle = rgbStr(asphalt);
+  for (let i = 0; i < SAMPLES; i++) {
+    const dA = i / SAMPLES;
+    const dB = (i + 1) / SAMPLES;
+    poly([
+      ground(dA, -ROAD_HALF),
+      ground(dA, ROAD_HALF),
+      ground(dB, ROAD_HALF),
+      ground(dB, -ROAD_HALF),
+    ]);
+  }
+  ctx.strokeStyle = rgbaStr(mix(C_BONE, C_GOLD, duskF), 0.18 + duskF * 0.4);
+  const DASH = 44;
+  for (let i = 0; i < DASH; i += 2) line(ground(i / DASH, 0), ground((i + 1) / DASH, 0));
+
+  // --- ACT3 engine: light-arteries streaming along the road toward horizon ---
+  if (enginePulse > 0.01) {
+    const PACKETS = 22;
+    for (let i = 0; i < PACKETS; i++) {
+      const base = i / PACKETS;
+      const d = (base + t * 0.6) % 1; // flow toward horizon as you scroll
+      const side = i % 2 === 0 ? -1 : 1;
+      const lane = side * ROAD_HALF * 0.5;
+      const [x, y] = ground(d, lane);
+      const s = sceneScale(d);
+      const col = NEON[i % NEON.length];
+      const r = Math.max(1.5, 5 * s) * (0.6 + 0.4 * Math.sin(i + t * 12));
+      ctx.fillStyle = rgbaStr(col, 0.5 * enginePulse);
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // --- buildings + car, painter-sorted far -> near --------------------------
+  const carAdvance = Math.pow(t, 0.7);
+  const carD = 1 - carAdvance * 0.95;
+  type Item = { d: number; b?: Building };
+  const items: Item[] = CITY.map((b) => ({ d: b.d, b }));
+  items.push({ d: carD });
+  items.sort((p, q) => q.d - p.d);
+
+  for (const it of items) {
+    if (!it.b) {
+      const grow = lerp(1.0, 2.2, smoothstep(0.0, 1.0, t));
+      // headlight beams strongest in act 1 (fog), fading as the city lights up
+      const beamA = 0.34 * (0.4 + 0.6 * phaseA);
+      for (const lamp of [-0.3, 0.3] as const) {
+        const apex = ground(carD, lamp);
+        apex[1] -= lanePx * sceneScale(carD) * 0.3;
+        const left = ground(Math.max(carD - 0.28, 0), lamp - 0.85);
+        const right = ground(Math.max(carD - 0.28, 0), lamp + 0.85);
+        const beam = ctx.createLinearGradient(
+          apex[0],
+          apex[1],
+          (left[0] + right[0]) / 2,
+          (left[1] + right[1]) / 2,
+        );
+        beam.addColorStop(0, rgbaStr(C_BONE, beamA));
+        beam.addColorStop(1, rgbaStr(C_BONE, 0));
+        ctx.fillStyle = beam;
+        poly([apex, left, right]);
+      }
+      drawIsoBox(
+        carD,
+        0,
+        0.85 * grow,
+        1.2 * grow,
+        (m) => {
+          const v = 8 * m + 3;
+          return rgbStr([v, v, v + 1]);
+        },
+        rgbaStr(C_BONE, 0.3),
+      );
+      continue;
+    }
+    const b = it.b;
+    const foreFade = 1 - smoothstep(0.0, 0.18, b.d);
+    const nearPass = smoothstep(0.15, 0.6, t);
+    const a = 1 - foreFade * nearPass;
+    if (a <= 0.02) continue;
+    const dim = 0.5 + (1 - b.d) * 0.5;
+    const neon = NEON[b.neon];
+    // windows wake gradually; in act 3 they PULSE rhythmically (engine beat)
+    const pulse = 1 + enginePulse * 0.5 * Math.sin(t * 16 + b.litOffset * 6.28);
+    const winAlpha =
+      Math.min(1, Math.max(0, cityColor * 1.5 - b.litOffset * 0.6)) * pulse;
+    const faded = a < 1;
+    if (faded) {
+      ctx.save();
+      ctx.globalAlpha = a;
+    }
+    drawIsoBox(
+      b.d,
+      b.v,
+      b.footW,
+      b.h,
+      (m) => {
+        const g = b.tone * dim * m;
+        return rgbStr(mix([g, g, g], [g * 1.18, g * 1.02, g * 0.82], cityColor));
+      },
+      rgbaStr(
+        mix(C_BONE, neon, cityColor * 0.5),
+        0.05 + (1 - b.d) * 0.08 + cityColor * 0.1,
+      ),
+      b.windows,
+      winAlpha > 0.02 ? rgbaStr(neon, 0.3 + Math.min(0.65, winAlpha * 0.6)) : undefined,
+    );
+    if (faded) ctx.restore();
+  }
+
+  // --- rain (act 1 only) ----------------------------------------------------
+  if (rainAmount > 0.01) {
+    ctx.strokeStyle = rgbaStr(C_BONE, 0.12 * rainAmount);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const count = Math.ceil(RAIN.length * rainAmount);
+    for (let i = 0; i < count; i++) {
+      const s = RAIN[i];
+      const yy = ((s.y + t * 1.1) % 1) * height;
+      const xx = s.x * width;
+      const L = s.len * height;
+      ctx.moveTo(xx, yy);
+      ctx.lineTo(xx - L * 0.16, yy + L);
+    }
+    ctx.stroke();
+  }
+
+  // --- vignette (heavy in act 1, lifts toward act 3) ------------------------
+  const vg = ctx.createRadialGradient(
+    width / 2,
+    height * 0.55,
+    Math.min(width, height) * 0.2,
+    width / 2,
+    height * 0.55,
+    Math.max(width, height) * 0.75,
+  );
+  vg.addColorStop(0, "rgba(10,10,10,0)");
+  vg.addColorStop(1, rgbaStr(C_INK, 0.78 * phaseA + 0.35 * (1 - phaseA) - 0.12 * phaseC));
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, width, height);
+}
+
+// ---------------------------------------------------------------------------
+// ACTS 4-5 — flat side profile (the arrival). `t` is local 0..1 (global
+// CUT..1). The car pulls toward home and the sky goes full dawn.
+// ---------------------------------------------------------------------------
+function drawSideAct(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  width: number,
+  height: number,
+): void {
+  drawCameraB(ctx, lerp(0.78, 1.0, t), width, height);
+}
+
+/**
+ * CAMERA B — a clean, stylized SIDE PROFILE of the car arriving home, in full
+ * warm colour. A separate, simpler flat composition. Deterministic.
+ */
+function drawCameraB(
+  ctx: CanvasRenderingContext2D,
+  progress: number,
+  width: number,
+  height: number,
+): void {
+  const localT = smoothstep(0.78, 1.0, progress); // arrival progression 0..1
+  const groundY = height * 0.72;
+
+  const circle = (cx: number, cy: number, r: number): void => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const roundRect = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number,
+  ): void => {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // --- sky — warm sunrise gradient -----------------------------------------
+  const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+  sky.addColorStop(0, rgbStr([86, 110, 168]));
+  sky.addColorStop(0.6, rgbStr([214, 150, 138]));
+  sky.addColorStop(1, rgbStr([252, 196, 140]));
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, width, groundY);
+
+  // low warm sun glow on the right, behind the home
+  const sunX = width * 0.74;
+  const sunY = groundY - height * 0.05;
+  const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, height * 0.42);
+  sun.addColorStop(0, rgbaStr([255, 234, 184], 0.9));
+  sun.addColorStop(0.4, rgbaStr([255, 200, 130], 0.32));
+  sun.addColorStop(1, rgbaStr([255, 200, 130], 0));
+  ctx.fillStyle = sun;
+  ctx.fillRect(0, 0, width, groundY);
+
+  // --- background skyline (flat side elevation, lit windows) ---------------
+  for (const b of SIDE_CITY) {
+    const bw = b.w * width;
+    const bh = b.h * height;
+    const bx = b.x * width;
+    const by = groundY - bh;
+    ctx.fillStyle = rgbStr([58, 52, 74]); // dusky violet mass
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = rgbaStr(C_GOLD, 0.5); // lit windows
+    const padX = bw * 0.2;
+    const padY = bh * 0.1;
+    const gw = (bw - padX * 2) / b.cols;
+    const gh = (bh - padY * 2) / b.rows;
+    for (let c = 0; c < b.cols; c++) {
+      for (let r = 0; r < b.rows; r++) {
+        ctx.fillRect(
+          bx + padX + c * gw + gw * 0.22,
+          by + padY + r * gh + gh * 0.22,
+          gw * 0.5,
+          gh * 0.5,
+        );
+      }
+    }
+  }
+
+  // --- ground + road -------------------------------------------------------
+  ctx.fillStyle = rgbStr([74, 58, 50]);
+  ctx.fillRect(0, groundY, width, height - groundY);
+  const roadTop = groundY + (height - groundY) * 0.16;
+  const roadH = (height - groundY) * 0.46;
+  ctx.fillStyle = rgbStr([40, 36, 42]);
+  ctx.fillRect(0, roadTop, width, roadH);
+  // gold centre dashes, scrolling with arrival
+  const cyl = roadTop + roadH * 0.5;
+  ctx.fillStyle = rgbaStr(C_GOLD, 0.8);
+  const dashOffset = (localT * 60) % 60;
+  for (let x = -dashOffset; x < width; x += 60) {
+    ctx.fillRect(x, cyl - 2, 28, 4);
+  }
+
+  // --- the home (destination) on the right ---------------------------------
+  const homeX = width * 0.82;
+  const hw = width * 0.16;
+  const hh = height * 0.2;
+  const homeBaseY = roadTop;
+  // warm glow behind the home
+  const hglow = ctx.createRadialGradient(
+    homeX,
+    homeBaseY - hh * 0.5,
+    8,
+    homeX,
+    homeBaseY - hh * 0.5,
+    hw * 1.6,
+  );
+  hglow.addColorStop(0, rgbaStr(C_GOLD, 0.3));
+  hglow.addColorStop(1, rgbaStr(C_GOLD, 0));
+  ctx.fillStyle = hglow;
+  ctx.fillRect(homeX - hw * 1.6, homeBaseY - hh * 2, hw * 3.2, hh * 2.4);
+  // walls
+  ctx.fillStyle = rgbStr([224, 208, 182]);
+  ctx.fillRect(homeX - hw / 2, homeBaseY - hh, hw, hh);
+  // crimson pitched roof
+  ctx.fillStyle = rgbStr(C_CRIMSON);
+  ctx.beginPath();
+  ctx.moveTo(homeX - hw / 2 - 8, homeBaseY - hh);
+  ctx.lineTo(homeX, homeBaseY - hh - hh * 0.48);
+  ctx.lineTo(homeX + hw / 2 + 8, homeBaseY - hh);
+  ctx.closePath();
+  ctx.fill();
+  // door + lit windows
+  ctx.fillStyle = rgbStr([92, 60, 40]);
+  ctx.fillRect(homeX - hw * 0.08, homeBaseY - hh * 0.4, hw * 0.16, hh * 0.4);
+  ctx.fillStyle = rgbaStr(C_GOLD, 0.85);
+  ctx.fillRect(homeX - hw * 0.36, homeBaseY - hh * 0.74, hw * 0.2, hh * 0.24);
+  ctx.fillRect(homeX + hw * 0.16, homeBaseY - hh * 0.74, hw * 0.2, hh * 0.24);
+
+  // --- the car, side profile, pulling toward home --------------------------
+  const carCX = lerp(width * 0.32, width * 0.58, localT);
+  const L = width * 0.2;
+  const H = L * 0.3;
+  const wheelR = L * 0.1;
+  const wy = cyl - wheelR; // wheels rest on the road centre line
+  const bodyBottom = wy;
+  const bodyTop = wy - H;
+  const bodyLeft = carCX - L * 0.5;
+
+  // headlight beam toward the home (drawn first, under the body)
+  const beam = ctx.createLinearGradient(
+    carCX + L * 0.5,
+    bodyTop + H * 0.4,
+    carCX + L * 1.3,
+    cyl,
+  );
+  beam.addColorStop(0, rgbaStr([255, 240, 200], 0.5));
+  beam.addColorStop(1, rgbaStr([255, 240, 200], 0));
+  ctx.fillStyle = beam;
+  ctx.beginPath();
+  ctx.moveTo(carCX + L * 0.48, bodyTop + H * 0.35);
+  ctx.lineTo(carCX + L * 1.3, cyl - H * 0.2);
+  ctx.lineTo(carCX + L * 1.3, cyl + H * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // wheels
+  ctx.fillStyle = "#111418";
+  circle(carCX - L * 0.3, wy, wheelR);
+  circle(carCX + L * 0.3, wy, wheelR);
+  ctx.fillStyle = rgbStr([92, 92, 100]); // hubs
+  circle(carCX - L * 0.3, wy, wheelR * 0.42);
+  circle(carCX + L * 0.3, wy, wheelR * 0.42);
+
+  // body — gold
+  ctx.fillStyle = rgbStr(C_GOLD);
+  roundRect(bodyLeft, bodyTop, L, H, H * 0.35);
+  // cabin — slightly deeper gold, with a sky-tinted window
+  ctx.fillStyle = rgbStr([232, 188, 36]);
+  ctx.beginPath();
+  ctx.moveTo(carCX - L * 0.22, bodyTop);
+  ctx.lineTo(carCX - L * 0.12, bodyTop - H * 0.6);
+  ctx.lineTo(carCX + L * 0.12, bodyTop - H * 0.6);
+  ctx.lineTo(carCX + L * 0.22, bodyTop);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = rgbaStr([186, 214, 238], 0.92); // glass
+  ctx.beginPath();
+  ctx.moveTo(carCX - L * 0.17, bodyTop - H * 0.05);
+  ctx.lineTo(carCX - L * 0.09, bodyTop - H * 0.52);
+  ctx.lineTo(carCX + L * 0.09, bodyTop - H * 0.52);
+  ctx.lineTo(carCX + L * 0.17, bodyTop - H * 0.05);
+  ctx.closePath();
+  ctx.fill();
+  // crimson accent stripe along the lower body
+  ctx.fillStyle = rgbStr(C_CRIMSON);
+  ctx.fillRect(bodyLeft + L * 0.06, bodyBottom - H * 0.28, L * 0.88, H * 0.1);
+  // headlight + tail light
+  ctx.fillStyle = rgbaStr([255, 244, 210], 0.97);
+  circle(carCX + L * 0.46, bodyTop + H * 0.4, H * 0.1);
+  ctx.fillStyle = rgbStr(C_CRIMSON);
+  circle(carCX - L * 0.46, bodyTop + H * 0.4, H * 0.08);
+}
+
+/**
+ * Frame orchestrator — draws the act, then layers cinematic post-process:
+ * a hard-cut dip-to-black around CUT, a per-act colour grade wash, and subtle
+ * film grain. All deterministic from `progress`.
+ */
+function draw(
+  ctx: CanvasRenderingContext2D,
+  progress: number,
+  width: number,
+  height: number,
+): void {
+  drawCameraA(ctx, progress, width, height);
+
+  // --- colour-grade wash: cool noir -> warm dawn across the journey --------
+  const coolF = 1 - smoothstep(0.0, CUT, progress);
+  const warmF = smoothstep(CUT, 1.0, progress);
+  if (coolF > 0.01) {
+    ctx.fillStyle = rgbaStr([20, 40, 70], 0.12 * coolF); // teal noir grade
+    ctx.fillRect(0, 0, width, height);
+  }
+  if (warmF > 0.01) {
+    ctx.fillStyle = rgbaStr([255, 170, 90], 0.1 * warmF); // amber dawn grade
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // --- hard-cut dip to black: brief blackout right around CUT --------------
+  const cutDist = Math.abs(progress - CUT);
+  if (cutDist < 0.035) {
+    const dip = 1 - smoothstep(0.0, 0.035, cutDist); // 1 at CUT -> 0 at edges
+    ctx.fillStyle = rgbaStr(C_INK, dip * 0.96);
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // --- film grain: subtle moving dots --------------------------------------
+  const gt = Math.floor(progress * 240); // changes as you scroll => "alive"
+  ctx.fillStyle = rgbaStr(C_BONE, 0.035);
+  for (let i = 0; i < GRAIN.length; i++) {
+    const g = GRAIN[i];
+    const jx = ((g.x + ((i * 73 + gt * 37) % 100) / 100) % 1) * width;
+    const jy = ((g.y + ((i * 31 + gt * 53) % 100) / 100) % 1) * height;
+    ctx.fillRect(jx, jy, 1, 1);
+  }
+}
+
+/**
+ * Fixed full-viewport canvas painting the journey scene from the page's global
+ * scroll progress. Reports throttled progress up so the page can tune a
+ * legibility scrim as the scene brightens. Reduced motion = one static frame.
+ */
+export function CarJourneyBackground({
+  reduced,
+  onProgress,
+}: {
+  reduced: boolean;
+  onProgress?: (p: number) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const onProgressRef = useRef(onProgress);
+
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+  }, [onProgress]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let w = 0;
+    let h = 0;
+    const size = (): void => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = canvas.clientWidth;
+      h = canvas.clientHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    let last = -1;
+    const frame = (): void => {
+      const maxScroll = Math.max(
+        1,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
+      const p = reduced
+        ? 0
+        : Math.min(1, Math.max(0, window.scrollY / maxScroll));
+      draw(ctx, p, w, h);
+      if (onProgressRef.current && Math.abs(p - last) > 0.005) {
+        last = p;
+        onProgressRef.current(p);
+      }
+    };
+
+    size();
+    let raf = 0;
+    if (reduced) {
+      frame(); // single static frame at progress 0
+    } else {
+      const loop = (): void => {
+        if (document.visibilityState !== "hidden") frame();
+        raf = window.requestAnimationFrame(loop);
+      };
+      raf = window.requestAnimationFrame(loop);
+    }
+
+    let resizeTimer = 0;
+    const onResize = (): void => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        size();
+        frame();
+      }, 150);
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(resizeTimer);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [reduced]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-0 h-full w-full"
+    />
+  );
+}
