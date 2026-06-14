@@ -48,3 +48,4 @@ Commit-ul exact = de identificat din `git log` (cauta mesaje cu hero/horizon/zoo
 - 9c89ede — chore: verify post-commit auto-log — files: .hooktest — 2026-06-14T02:49:22+03:00
 - 6e920a4 — chore: remove hook test file — files: .hooktest — 2026-06-14T02:49:23+03:00
 - 6db9abb — chore: version BUILDLOG (track _prompts) — files: .gitignore,_prompts/BUILDLOG.md — 2026-06-14T02:54:19+03:00
+- 6633892 — chore: narrow _prompts gitignore to BUILDLOG only — files: .gitignore,_prompts/01-build-full-site.md,_prompts/01-complete.md,_prompts/BUILDLOG.md,_prompts/vectr-model-progress.md — 2026-06-14T03:01:53+03:00
