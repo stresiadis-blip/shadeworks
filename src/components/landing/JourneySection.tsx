@@ -244,6 +244,7 @@ function drawCameraA(
   progress: number,
   width: number,
   height: number,
+  showCar: boolean,
 ): void {
   // ===========================================================================
   // FIVE ACTS on a single clock (progress). HARD CUT at CUT between the iso
@@ -259,9 +260,9 @@ function drawCameraA(
   const CUT = 0.62;
 
   if (progress < CUT) {
-    drawIsoAct(ctx, progress / CUT, width, height); // local 0..1 across acts 1-3
+    drawIsoAct(ctx, progress / CUT, width, height, showCar); // local 0..1 across acts 1-3
   } else {
-    drawSideAct(ctx, (progress - CUT) / (1 - CUT), width, height); // local 0..1 acts 4-5
+    drawSideAct(ctx, (progress - CUT) / (1 - CUT), width, height, showCar); // local 0..1 acts 4-5
   }
 }
 
@@ -275,6 +276,7 @@ function drawIsoAct(
   t: number,
   width: number,
   height: number,
+  showCar: boolean,
 ): void {
   // Three distinct visual phases across acts 1-3 (t local 0..1):
   //   PHASE A (t 0.00-0.30) ACT1 exposition — deep noir, heavy rain, car far,
@@ -444,6 +446,7 @@ function drawIsoAct(
 
   for (const it of items) {
     if (!it.b) {
+      if (!showCar) continue; // backdrop mode composites a PNG car instead
       const grow = lerp(1.0, 2.2, smoothstep(0.0, 1.0, t));
       // headlight beams strongest in act 1 (fog), fading as the city lights up
       const beamA = 0.34 * (0.4 + 0.6 * phaseA);
@@ -522,8 +525,9 @@ function drawSideAct(
   t: number,
   width: number,
   height: number,
+  showCar: boolean,
 ): void {
-  drawCameraB(ctx, lerp(0.78, 1.0, t), width, height);
+  drawCameraB(ctx, lerp(0.78, 1.0, t), width, height, showCar);
 }
 
 /**
@@ -537,6 +541,7 @@ function drawCameraB(
   progress: number,
   width: number,
   height: number,
+  showCar: boolean,
 ): void {
   const localT = smoothstep(0.78, 1.0, progress); // arrival progression 0..1
   const groundY = height * 0.72;
@@ -660,6 +665,7 @@ function drawCameraB(
   ctx.fillRect(homeX + hw * 0.16, homeBaseY - hh * 0.74, hw * 0.2, hh * 0.24);
 
   // --- the car, side profile, pulling toward home --------------------------
+  if (!showCar) return; // backdrop mode composites a PNG car instead
   const carCX = lerp(width * 0.32, width * 0.58, localT);
   const L = width * 0.2;
   const H = L * 0.3;
@@ -734,10 +740,11 @@ function draw(
   progress: number,
   width: number,
   height: number,
+  showCar = true,
 ): void {
   const CUT = 0.62;
 
-  drawCameraA(ctx, progress, width, height);
+  drawCameraA(ctx, progress, width, height, showCar);
 
   // --- colour-grade wash: cool noir -> warm dawn across the journey --------
   // Two overlapping washes keyed to progress; very low alpha so it tints,
@@ -772,6 +779,23 @@ function draw(
     const jy = ((g.y + ((i * 31 + gt * 53) % 100) / 100) % 1) * height;
     ctx.fillRect(jx, jy, 1, 1);
   }
+}
+
+/**
+ * Reuse the EXACT journey road scene (geometry, perspective, movement, timing,
+ * grain) as a standalone backdrop — driven by an external scroll progress.
+ * `showCar = false` skips the drawn car so a PNG asset can be composited over
+ * the road instead. The JourneySection component itself is unchanged (it calls
+ * `draw` with the default `showCar = true`).
+ */
+export function drawJourneyScene(
+  ctx: CanvasRenderingContext2D,
+  progress: number,
+  width: number,
+  height: number,
+  showCar = true,
+): void {
+  draw(ctx, progress, width, height, showCar);
 }
 
 // ---------------------------------------------------------------------------

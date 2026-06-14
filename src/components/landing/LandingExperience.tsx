@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { JourneyCanvas } from "./journey/JourneyCanvas";
+import { JourneyRoadBackdrop } from "./journey/JourneyRoadBackdrop";
 import { JourneyProcess } from "./journey/JourneyProcess";
 import { setJourneyProgress } from "./journey/journeyStore";
 import { ProofSection } from "./ProofSection";
@@ -25,7 +25,7 @@ const SCRIM_BG =
 
 /**
  * Landing experience — the Vectr editorial structure over a single cinematic
- * canvas backdrop (JourneyCanvas). One 300vh ScrollTrigger pin (scrub, on top of
+ * canvas backdrop (JourneyRoadBackdrop). One 300vh ScrollTrigger pin (scrub, on top of
  * Lenis) writes a valtio store; the canvas reads it imperatively, the hero fades,
  * the six-step process opens step by step, and a scrim keeps text legible over
  * the bright climax. After the pin, Proof + CTA flow on solid ink. All copy is
@@ -137,8 +137,8 @@ export function LandingExperience() {
 
   return (
     <div ref={rootRef} className="relative overflow-x-hidden">
-      {/* cinematic canvas backdrop — fixed behind everything */}
-      <JourneyCanvas reduced={reduced} />
+      {/* our existing road (JourneySection) + neo-noir grade/glow + PNG car */}
+      <JourneyRoadBackdrop reduced={reduced} />
 
       {/* legibility scrim between the scene and the text */}
       <div
