@@ -48,3 +48,6 @@ _reference/
 .claude/
 shadeworks-assets/
 src/_archive/
+
+_prompts/*
+!_prompts/BUILDLOG.md
