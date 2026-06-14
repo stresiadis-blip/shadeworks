@@ -50,3 +50,4 @@ Commit-ul exact = de identificat din `git log` (cauta mesaje cu hero/horizon/zoo
 - 6db9abb — chore: version BUILDLOG (track _prompts) — files: .gitignore,_prompts/BUILDLOG.md — 2026-06-14T02:54:19+03:00
 - 6633892 — chore: narrow _prompts gitignore to BUILDLOG only — files: .gitignore,_prompts/01-build-full-site.md,_prompts/01-complete.md,_prompts/BUILDLOG.md,_prompts/vectr-model-progress.md — 2026-06-14T03:01:53+03:00
 - 147d973 — revert(journey): restore iso scene-1 (horizon approach + push-in zoom) from 415a229 — files: _prompts/BUILDLOG.md,src/components/landing/JourneySection.tsx — 2026-06-14T03:05:59+03:00
+- b54981a — feat(nav): wire Work link to /work; drop CRLF churn — files: _prompts/BUILDLOG.md,src/components/landing/LandingExperience.tsx — 2026-06-14T03:24:19+03:00

@@ -876,6 +876,28 @@ export function JourneySection() {
   // SAME value the canvas renders from. lastProgressRef throttles re-renders.
   const [progress, setProgress] = useState(0);
   const lastProgressRef = useRef(0);
+  // Preloader: a noir overlay covers the canvas until the first frame is painted.
+  const [ready, setReady] = useState(false);
+  const [gone, setGone] = useState(false);
+  // Reduced-motion lifted to React so the overlay shows fully-typed static copy
+  // (with no scroll there is no progress to drive the typewriter).
+  const [reduced, setReduced] = useState(false);
+
+  // Track reduced-motion at the React layer (separate from gsap.matchMedia).
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = (): void => setReduced(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Unmount the preloader shortly after it has faded out (~400ms transition).
+  useEffect(() => {
+    if (!ready) return;
+    const id = window.setTimeout(() => setGone(true), 450);
+    return () => window.clearTimeout(id);
+  }, [ready]);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -889,7 +911,8 @@ export function JourneySection() {
     // Match the backing store to the CSS box * devicePixelRatio so the scene
     // stays crisp on retina. All draw() coordinates remain in CSS pixels.
     const sizeCanvas = (): void => {
-      const dpr = window.devicePixelRatio || 1;
+      // Cap DPR at 2 so high-DPR phones don't allocate a huge backing store.
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       canvas.width = Math.round(w * dpr);
@@ -965,7 +988,19 @@ export function JourneySection() {
       };
     });
 
-    return () => mm.revert();
+    // Reveal the scene once the first frame is actually on screen (two RAFs =
+    // layout + paint done) — then the preloader fades away with no content flash.
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => setReady(true));
+    });
+
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      mm.revert();
+    };
   }, []);
 
   // Chapter opacities from the shared scroll progress (model B cross-fade).
@@ -976,11 +1011,13 @@ export function JourneySection() {
   const op5 = bandOpacity(progress, 0.86, 1.0); // ACT5 resolution (operators)
   // Typewriter reveal per chapter — wide bands so text writes slowly as you
   // scroll through almost the entire chapter window (cinematic, deliberate).
-  const tw1 = bandProgress(progress, 0.0, 0.15);
-  const tw2 = bandProgress(progress, 0.18, 0.37);
-  const tw3 = bandProgress(progress, 0.4, 0.6);
-  const tw4 = bandProgress(progress, 0.64, 0.83);
-  const tw5 = bandProgress(progress, 0.85, 1.0);
+  // Under reduced motion there is no scroll progress to type with, so reveal the
+  // copy in full (otherwise the typewriter would render blank text).
+  const tw1 = reduced ? 1 : bandProgress(progress, 0.0, 0.15);
+  const tw2 = reduced ? 1 : bandProgress(progress, 0.18, 0.37);
+  const tw3 = reduced ? 1 : bandProgress(progress, 0.4, 0.6);
+  const tw4 = reduced ? 1 : bandProgress(progress, 0.64, 0.83);
+  const tw5 = reduced ? 1 : bandProgress(progress, 0.85, 1.0);
   const openConsole = () => setConsoleOpen(true);
 
   return (
@@ -1075,6 +1112,22 @@ export function JourneySection() {
           </Chapter>
         </div>
       </div>
+
+      {/* Preloader — noir overlay over everything until the first frame paints,
+          then fades out (~400ms) and unmounts. No flash of un-rendered canvas. */}
+      {!gone && (
+        <div
+          aria-hidden
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ink transition-opacity duration-[400ms] ease-out"
+          style={{ opacity: ready ? 0 : 1, pointerEvents: ready ? "none" : "auto" }}
+        >
+          <span className="font-logo text-3xl text-bone md:text-4xl">shadeworks</span>
+          <span className="mt-6 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.4em] text-bone-dim">
+            <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-signal" />
+            loading
+          </span>
+        </div>
+      )}
 
       {consoleOpen && <IdeaScannerConsole onClose={() => setConsoleOpen(false)} />}
     </section>
