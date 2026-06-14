@@ -52,3 +52,4 @@ Commit-ul exact = de identificat din `git log` (cauta mesaje cu hero/horizon/zoo
 - 147d973 — revert(journey): restore iso scene-1 (horizon approach + push-in zoom) from 415a229 — files: _prompts/BUILDLOG.md,src/components/landing/JourneySection.tsx — 2026-06-14T03:05:59+03:00
 - b54981a — feat(nav): wire Work link to /work; drop CRLF churn — files: _prompts/BUILDLOG.md,src/components/landing/LandingExperience.tsx — 2026-06-14T03:24:19+03:00
 - 73dc20c — feat(journey): preloader + reduced-motion + mobile polish — files: _prompts/BUILDLOG.md,src/components/landing/JourneySection.tsx — 2026-06-14T03:46:20+03:00
+- 3bf90aa — feat(landing): editorial Vectr structure on / (pinned hero + scroll-built process + flowing sections) — files: _prompts/BUILDLOG.md,src/components/landing/LandingExperience.tsx,src/components/landing/ProcessSection.tsx — 2026-06-14T04:33:16+03:00
