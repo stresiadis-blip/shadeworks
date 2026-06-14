@@ -24,10 +24,14 @@ export function LandingExperience() {
           shadeworks
         </Link>
         <nav className="flex items-center gap-7">
-          {["Work", "Studio", "Contact"].map((label) => (
+          {[
+            { label: "Work", href: "/work" },
+            { label: "Studio", href: "#" },
+            { label: "Contact", href: "#" },
+          ].map(({ label, href }) => (
             <Link
               key={label}
-              href="#"
+              href={href}
               className="font-mono text-[11px] uppercase tracking-[0.25em] text-bone-muted transition-colors hover:text-bone"
             >
               {label}
