@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { PROOF_EYEBROW, PROOF_HEADLINE } from "@/data/studio";
+import { PROOF_EYEBROW, PROOF_HEADLINE, PROOF_BODY } from "@/data/studio";
 import { getCaseStudy } from "@/lib/work";
 
 /**
@@ -34,10 +34,16 @@ export function ProofSection() {
         </p>
         <h2
           data-reveal
-          className="mb-16 font-display-black text-3xl text-bone md:text-6xl"
+          className="mb-6 font-display-black text-3xl text-bone md:text-6xl"
         >
           {PROOF_HEADLINE}
         </h2>
+        <p
+          data-reveal
+          className="mb-16 max-w-2xl font-mono text-xs leading-relaxed text-bone-muted md:text-sm"
+        >
+          {PROOF_BODY}
+        </p>
 
         <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-12">
           {/* noir-graded build still — links to the internal case study */}
