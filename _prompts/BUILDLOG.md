@@ -7,6 +7,15 @@
 
 ---
 
+## Sesiune 2026-06-14 (end sesh)
+Landing pe `feature/journey-canvas`: structura editoriala Vectr (hero + proces pinned 6 pasi + Proof + CTA) peste backdrop cinematic.
+- Iteratii backdrop GRESITE (toate = drum generat de la zero, NU drumul nostru): `CarJourneyBackground` (1a1cfbe), `JourneyBackdrop` (103fffc), `JourneyCanvas`+`drawCar` (054a78d). REVERTED.
+- CORECT (a5af00d, **KEEP, NEverificat vizual**): backdrop = drumul EXACT din `JourneySection.tsx` reutilizat via export `drawJourneyScene(showCar=false)` (flag aditiv, drum byte-identic). Peste el DOAR: grade mono->culoare 59% (CSS grayscale), dawn glow amber/crimson la orizont de la 59%, masina = PNG `/car-noir-headon.png` (NU desenata). Scroll: pin 300vh -> store valtio. Stack nou: `valtio`.
+- Deschis: sosirea (dupa cut 0.62) fara masina; PNG dispare la cut. De decis cu Adi.
+- Lectie: NU regenera soseaua. "Drumul nostru" = JourneySection (147d973) — reutilizeaza desenul, pune doar grade+asset peste.
+
+---
+
 ## Conventie
 `HASH — eticheta — ce face (per scena) — STATUS`
 STATUS: KEEP (bun, de pastrat) / BROKE (a stricat ceva) / WIP / REVERTED
@@ -53,3 +62,10 @@ Commit-ul exact = de identificat din `git log` (cauta mesaje cu hero/horizon/zoo
 - b54981a — feat(nav): wire Work link to /work; drop CRLF churn — files: _prompts/BUILDLOG.md,src/components/landing/LandingExperience.tsx — 2026-06-14T03:24:19+03:00
 - 73dc20c — feat(journey): preloader + reduced-motion + mobile polish — files: _prompts/BUILDLOG.md,src/components/landing/JourneySection.tsx — 2026-06-14T03:46:20+03:00
 - 3bf90aa — feat(landing): editorial Vectr structure on / (pinned hero + scroll-built process + flowing sections) — files: _prompts/BUILDLOG.md,src/components/landing/LandingExperience.tsx,src/components/landing/ProcessSection.tsx — 2026-06-14T04:33:16+03:00
+- a90caa9 — feat(landing): faithful vectr design+motion (noir, own copy) — files: _prompts/BUILDLOG.md,src/components/landing/IsoDiorama.tsx,src/components/landing/LandingExperience.tsx,src/components/landing/ProcessSection.tsx — 2026-06-14T04:49:34+03:00
+- 7d3f3a8 — @ feat(landing): car-journey background under vectr structure (noir->color) — files: src/components/landing/CarJourneyBackground.tsx,src/components/landing/IsoDiorama.tsx,src/components/landing/LandingExperience.tsx — 2026-06-14T06:31:21+03:00
+- 1a1cfbe — feat(landing): car-journey background under vectr structure (noir->color) — files: src/components/landing/CarJourneyBackground.tsx,src/components/landing/IsoDiorama.tsx,src/components/landing/LandingExperience.tsx — 2026-06-14T06:31:56+03:00
+- 103fffc — feat(journey): cinematic noir car-approach backdrop under vectr (scroll-driven) — files: src/components/landing/CarJourneyBackground.tsx,src/components/landing/IsoDiorama.tsx,src/components/landing/JourneyBackdrop.tsx,src/components/landing/LandingExperience.tsx — 2026-06-14T07:39:09+03:00
+- 054a78d — feat(journey): cinematic canvas car-approach on our road + vectr structure — files: package-lock.json,package.json,src/components/landing/JourneyBackdrop.tsx,src/components/landing/LandingExperience.tsx,src/components/landing/ProofSection.tsx,src/components/landing/journey/JourneyCanvas.tsx,src/components/landing/journey/JourneyProcess.tsx,src/components/landing/journey/drawCar.ts,src/components/landing/journey/journeyStore.ts — 2026-06-14T08:03:04+03:00
+- a5af00d — feat(journey): our road backdrop + neo-noir grade + PNG car — files: public/car-noir-headon.png,src/components/landing/JourneySection.tsx,src/components/landing/LandingExperience.tsx,src/components/landing/journey/JourneyCanvas.tsx,src/components/landing/journey/JourneyRoadBackdrop.tsx,src/components/landing/journey/drawCar.ts — 2026-06-14T09:26:39+03:00
+- 180cae5 — @ docs: end sesh 2026-06-14 — journey road backdrop (our road + grade + PNG car) — files: CLAUDE.md,_prompts/BUILDLOG.md — 2026-06-14T09:28:36+03:00

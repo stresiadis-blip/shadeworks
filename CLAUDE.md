@@ -1,8 +1,10 @@
 # Shade Works — Claude Context
-Last updated: 2026-06-13 | Status: IN DEVELOPMENT
+Last updated: 2026-06-14 | Status: IN DEVELOPMENT
 Pagina de prezentare a studioului Shade Works (viitor PFA Adrian Cata, Constanta). Vitrina: "ce suntem capabili sa facem". Studio generalist — NU nisat pe maritim (maritimul tine de un eventual produs separat, nu de site).
 
 > **PIVOT ACTIV (branch `feature/vectr-model`, 3/9 commits, NEmerged):** landing-ul se muta pe model editorial Vectr (hero pinned + sectiuni scroll), iar sfera 3D pleaca pe `/work`. Sectiunea "CONCEPT REAL" de mai jos descrie inca PRODUCTIA (main, sfera-as-homepage) — valida pana la merge. Detalii + ce a ramas: `_prompts/vectr-model-progress.md`. Arhiva sfera-as-hero: branch `sphere-gallery-archive`.
+
+> **STARE LANDING pe `feature/journey-canvas` (2026-06-14, NEmerged, NEpushed inca la end-sesh):** landing = structura editoriala Vectr (hero fade + proces pinned 6 pasi + Proof + CTA) PESTE un backdrop cinematic. Backdrop = **drumul nostru EXACT din `JourneySection.tsx`** (functiile de desen, reutilizate via export `drawJourneyScene(...)`, flag aditiv `showCar`), nu un drum generat. Peste drum se aplica DOAR: grade mono->culoare la 59% (CSS `grayscale(1-colorProgress)`), dawn glow amber/crimson la orizont de la 59%, si masina = asset PNG `/public/car-noir-headon.png` (head-on noir, 1036x691), NU desenata. Scroll: ScrollTrigger pin 300vh (scrub, peste Lenis) -> store valtio `{progress, colorProgress, activeStep}` (`src/components/landing/journey/`). Componente fallback pe disc, NEmontate: `IsoDiorama.tsx`. Deschis: sosirea (dupa cut 0.62) e momentan fara masina; NEverificat vizual de Adi. **Lectie:** "drumul nostru" = JourneySection (147d973); NU regenera soseaua — reutilizeaza desenul existent si pune doar grade+asset peste. Mai multe iteratii gresite (CarJourneyBackground/JourneyBackdrop/JourneyCanvas) au fost backdrop-uri generate de la zero = gresit.
 
 > **Reguli de convorbire + protocoale cross-proiect: `C:\Users\stres\jarvis\Claude\_RULES.md`** (sursa de adevar). Rezumat aplicabil mai jos.
 
